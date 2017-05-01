@@ -6,17 +6,7 @@ import csv
 import time
 import matplotlib.pyplot as plt
 
-class set_input():
-    ''' 
-        Input data-object
-        to be continued ...
-        @author: mhansinger
-    '''
-    def __init__(self,series_name='ETH_series.csv', long=1000, short=100, fee=0.0026):
-        self.series_name = series_name
-        self.window_long = long
-        self.window_short = short
-        self.fee = fee
+
 
 class Strategy_base(object):
     ''' 
@@ -30,6 +20,7 @@ class Strategy_base(object):
         self.window_long = Input.window_long
         self.window_short = Input.window_short
         self.fee = Input.fee
+        self.reinvest = Input.reinvest
 
         self.series = []
         self.__long_mean = []
@@ -46,7 +37,7 @@ class Strategy_base(object):
         try:
             self.series = self.series.set_index('Time stamp')
         except: KeyError
-        print('Zeitreihe hat bereits ein Label Time Stamp')
+            print('Zeitreihe hat bereits ein Label Time Stamp')
 
     def __getRolling(self):
 
@@ -60,7 +51,7 @@ class Strategy_base(object):
         self.__short_std = self.series.rolling(self.window_short).std()
 
     def plotData(self):
-        # helper member function to plot
+        '''helper member function to plot the data '''
         self.__getRolling()
 
         plt.plot(self.series)
@@ -69,5 +60,8 @@ class Strategy_base(object):
         plt.title('Original series, long and short means')
         plt.show()
 
-    def writeData(self):
-        __output_df = 
+
+class crossover_strat(Strategy_base):
+    def __init__(self,Input):
+        Strategy_base.__init__(self,Input)
+
