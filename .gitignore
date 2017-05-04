@@ -4,6 +4,6 @@
 
 *.csv
 
-
+__pycache__
 
 
