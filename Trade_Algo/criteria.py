@@ -21,13 +21,13 @@ class criteria(object):
         if self.short_mean > self.long_mean:
             ## das ist quasi das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
-            ## if Broker.asset_status == False:
-                ## Broker.buy_order()
-            ## elif Broker.idle()
+             if Broker.asset_status == False && Broker.broker_status == False:
+                 Broker.buy_order()
+             elif Broker.idle()
         elif self.long_mean > self.short_mean:
-            ## if Broker.asset_status == True:
-                ## Broker.sell_order()
-            ## elif Broker.idle()
+             if Broker.asset_status == True && Broker.broker_status == False:
+                 Broker.sell_order()
+             elif Broker.idle()
         else
             ## idle, soll nix machen
             # Broker.idle()
