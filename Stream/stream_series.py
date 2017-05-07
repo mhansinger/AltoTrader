@@ -24,7 +24,7 @@ class stream_series(threading.Thread):
 
         # series array
         series_array = np.loadtxt('raw_series.txt')
-        series_array = series_array.transpose()
+        # series_array = series_array.transpose()
         series_df = pd.DataFrame(series_array, columns=['Time stamp', 'Price'])
         series_df = series_df.set_index(['Time stamp'])
         # In this case its hard coded as ETH --> sollte noch geändert werden

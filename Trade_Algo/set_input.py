@@ -7,7 +7,7 @@ class set_input():
         to be continued ...
         @author: mhansinger
     '''
-    def __init__(self, asset='ETH', long=47000, short=2500, fee=0.0026, reinvest=1.0):
+    def __init__(self, asset='XETH', long=48000, short=5000, fee=0.0016, reinvest=1.0, investment=1000.0):
 
         self.window_long = long
         self.window_short = short
@@ -15,17 +15,19 @@ class set_input():
         self.reinvest = reinvest
         self.asset = asset
         self.time_series = []
+        self.investment = investment
+        self.series_name = []
 
-        if self.asset == 'ETH':
-            series_name = 'ETH_series.csv'
-            self.time_series = self.__import_series(series_name)
+        if self.asset == 'XETH':
+            self.series_name = 'ETH_series.csv'
+            #self.time_series = self.__import_series(series_name)
 
-        elif self.asset == 'BTC':
-            series_name = 'BTC_series.csv'
+        elif self.asset == 'XBTC':
+            self.series_name = 'BTC_series.csv'
             # etc.
 
-    def __import_series(self,__name):
-        __raw = pd.read_csv(__name)
-        __series = pd.Series(__raw['Price'])
-        return __series
+   # def __import_series(self,__name):
+    #    __raw = pd.read_csv(__name)
+    #    __series = pd.Series(__raw['Time stamp','Price'])
+    #    return __series
 

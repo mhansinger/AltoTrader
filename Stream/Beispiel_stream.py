@@ -3,9 +3,9 @@
 
 from stream_series import stream_series
 
-URL = 'http://zeiselmair.de/h4ckamuenster/results.txt'
+URL = 'http://zeiselmair.de/h4ckamuenster/results_eth.txt'
 
-ETH_stream = stream_series(URL,20)
+ETH_stream = stream_series(URL,600)
 
 ETH_stream.start()
 

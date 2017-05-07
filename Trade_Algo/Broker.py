@@ -11,7 +11,7 @@ import pandas as pd
 import krakenex
 import time
 
-class Broker(object):
+class Broker(object,input):
     def __init__(self,asset='XETH'):
         self.__asset = asset
 
@@ -66,8 +66,14 @@ class Broker(object):
         __asset_funds = self.__k.query_private('Balance')['result']['XETH']
         return float(__asset_funds)
 
+    def get_series_history(self):
+
+
     def idle(self):
+        # hier soll eigl nix passieren
 
+    # Fehlen noch members, die alles tracken und als .csv speichern
 
-    def get_asset_status(self):
+    # initialer asset check up
+
 
