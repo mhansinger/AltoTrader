@@ -19,11 +19,11 @@ class set_input():
         self.series_name = []
 
         if self.asset == 'XETH':
-            self.series_name = 'ETH_series.csv'
+            self.series_name = 'ETH_Series.csv'
             #self.time_series = self.__import_series(series_name)
 
         elif self.asset == 'XBTC':
-            self.series_name = 'BTC_series.csv'
+            self.series_name = 'BTC_Series.csv'
             # etc.
 
    # def __import_series(self,__name):

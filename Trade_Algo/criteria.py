@@ -38,17 +38,27 @@ class criteria(object):
              if self.Broker.asset_status == False & self.Broker.broker_status == False:
                  self.Broker.buy_order()
                  print('buy')
+                 print('long mean: ', self.__last_long)
+                 print('short mean: ', self.__last_short)
              else:
                 self.Broker.idle()
                 print('buy idle')
+                print('long mean: ', self.__last_long)
+                print('short mean: ', self.__last_short)
         elif self.__last_long > self.__last_short:
              if self.Broker.asset_status == True & self.Broker.broker_status == False:
                  self.Broker.sell_order()
                  print('sell')
+                 print('long mean: ', self.__last_long)
+                 print('short mean: ', self.__last_short)
              else:
                  self.Broker.idle()
                  print('sell idle')
+                 print('long mean: ', self.__last_long)
+                 print('short mean: ', self.__last_short)
         else:
             ## idle, soll nix machen
             self.Broker.idle()
             print('idle')
+            print('long mean: ', self.__last_long)
+            print('short mean: ', self.__last_short)

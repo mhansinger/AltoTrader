@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import krakenex
 import time
-import copy
 
 
 class Broker_virtual(object):
