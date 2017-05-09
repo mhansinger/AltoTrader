@@ -12,7 +12,7 @@ class criteria(object):
         self.time_series = []
         self.short_mean = []
         self.long_mean = []
-        self.short_win = Input.window_short
+        self.short_win = Input.window_short     # sollte noch dynamische werden
         self.long_win = Input.window_long
         self.Broker = broker
         self.series_name = Input.series_name

@@ -6,12 +6,16 @@ class history(object):
         self.time_series = []
 
     def import_history(self):
-        if self.input.asset == 'XETH':
+        path = self.input.asset1+self.input.asset2 +'_data'
+        '''
+        if self.input.asset1 == 'XETH':
             path = 'ETH_data/' + self.input.series_name
-        elif self.input.asset == 'XXBT':
+        elif self.input.asset1 == 'XXBT':
             path = 'BTC_data/' + self.input.series_name
             # und dann für andere Assets auch noch ...
-
+        elif self.input.asset1 == 'XREP':
+            path = ''
+        '''
         __raw = pd.read_csv(path)
         self.time_series = pd.Series(__raw['Price'])
 

@@ -14,7 +14,8 @@ import time
 
 class Broker_virtual(object):
     def __init__(self, input):
-        self.__asset = input.asset
+        self.__asset1 = input.asset1
+	    self.__asset2 = input.asset2
 
         self.asset_status = False
         self.broker_status = False
@@ -29,7 +30,7 @@ class Broker_virtual(object):
         self.__column_names = []
 
     def initialize(self):
-        self.__column_names = ['Time stamp', self.__asset, 'ZEUR', 'shares', 'costs', 'XETH price']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', 'XETH price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns= self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df['ZEUR'] = self.__invest
@@ -160,7 +161,6 @@ class Broker_virtual(object):
     def writeCSV(self,__df):
         __filename = self.__asset + '_balance.csv'
         pd.DataFrame.to_csv(__df,__filename)
-
 
 
 
