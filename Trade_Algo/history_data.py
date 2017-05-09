@@ -6,11 +6,11 @@ class history(object):
         self.time_series = []
         self.series_name = input.series_name
         self.path = self.input.asset1+self.input.asset2+'_data'
-        print('Time series from: '+self.path)
+        self.__file = self.path + '/' + self.series_name
+        print('Time series from: '+self.__file)
 
     def import_history(self):
 
-        __file = self.path+'/'+self.series_name
         __raw = pd.read_csv(__file)
         self.time_series = pd.Series(__raw['Price'])
 
