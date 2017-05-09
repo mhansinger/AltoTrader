@@ -49,15 +49,15 @@ class Broker_virtual(object):
         __current_eur_funds = __balance_np[-1,2] * 0.99999
         __current_costs = __current_eur_funds * self.__fee
 
-        __asset_bid = self.asset_market_bid()
+        __asset_ask = self.asset_market_ask()
 
-        __new_shares = (__current_eur_funds - __current_costs) / __asset_bid
-        __new_XETH = __new_shares * __asset_bid
+        __new_shares = (__current_eur_funds - __current_costs) / __asset_ask
+        __new_XETH = __new_shares * __asset_ask
         __new_eur_fund  = __balance_np[-1,2] - __current_eur_funds      # --> sollte gegen null gehen
         # update time
         __time = self.getTime()
 
-        __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_bid]]
+        __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_ask]]
         __balance_update_df = pd.DataFrame(__balance_update_vec, columns = self.__column_names)
         self.__balance_df = self.__balance_df.append(__balance_update_df)
 
@@ -71,25 +71,27 @@ class Broker_virtual(object):
 
         #return self.__balance_df
 
+
+    # Bug to fix
     def sell_order(self):
         self.broker_status = True
-        __asset_ask = self.asset_market_ask()
+        __asset_bid = self.asset_market_bid()
 
         # this only for virtual
         __balance_np = np.array(self.__balance_df.tail())
-        __asset_ask = self.asset_market_ask()
+        __asset_bid = self.asset_market_bid()
         __current_shares = __balance_np[-1,3] * 0.99999
-        __current_costs = __current_shares * __asset_ask * self.__fee
+        __current_costs = __current_shares * __asset_bid * self.__fee
 
-        __new_eur_fund = __current_shares * __asset_ask - __current_costs
+        __new_eur_fund = __current_shares * __asset_bid - __current_costs
 
         __new_shares = __balance_np[-1,3] - __current_shares        # --> sollte gegen null gehen
-        __new_XETH = __new_shares * __asset_ask
+        __new_XETH = __new_shares * __asset_bid
 
         # update time
         __time = self.getTime()
 
-        __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_ask]]
+        __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_bid]]
         __balance_update_df = pd.DataFrame(__balance_update_vec, columns = self.__column_names)
         self.__balance_df = self.__balance_df.append(__balance_update_df)
 
@@ -159,7 +161,7 @@ class Broker_virtual(object):
         return int(time.time())
 
     def writeCSV(self,__df):
-        __filename = self.__asset + '_balance.csv'
+        __filename = self.__pair+'_balance.csv'
         pd.DataFrame.to_csv(__df,__filename)
 
 

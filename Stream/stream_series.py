@@ -17,9 +17,9 @@ class stream_series(threading.Thread):
         self.state = threading.Condition()
         __URL_raw = 'http://zeiselmair.de/h4ckamuenster/'
 
-        self.__asset1 = asset1
-        self.__asset2 = asset2
-        self.__combination = self.__asset1 + self.__asset2
+        self.asset1 = asset1
+        self.asset2 = asset2
+        self.combination = self.asset1 + self.asset2
             # erweitern für Kombinationen
 
         self.URL = __URL_raw + self.combination +'.txt'
@@ -35,7 +35,7 @@ class stream_series(threading.Thread):
         series_df = pd.DataFrame(series_array, columns=['Time stamp', 'Price'])
         series_df = series_df.set_index(['Time stamp'])
         # In this case its hard coded as ETH --> sollte noch geändert werden
-        pd.DataFrame.to_csv(series_df, self.__combination+'_Series.csv')
+        pd.DataFrame.to_csv(series_df, self.combination+'_Series.csv')
 
     def run(self):
         self.resume() # unpause self

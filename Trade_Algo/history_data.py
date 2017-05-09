@@ -5,7 +5,7 @@ class history(object):
         self.input = input
         self.time_series = []
         self.series_name = self.input.series_name
-        self.path = self.input.asset1+self.input.asset2+'_data'+self.input.asset1+self.input.asset2+'_Series.csv'
+        self.path = self.input.asset1+self.input.asset2+'_data/'+self.series_name #self.input.asset1+self.input.asset2+'_Series.csv'
 
         print('Time series from: '+self.path)
 
