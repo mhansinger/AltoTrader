@@ -17,9 +17,6 @@ class set_input():
         self.asset2 = asset2
         self.time_series = []
         self.investment = investment
-        #self.series_name = []
-
-        #if self.asset1 == 'XETH':
         self.series_name = self.asset1+self.asset2+'_Series.csv'
-            #self.time_series = self.__import_series(series_name)
+
 
