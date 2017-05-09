@@ -9,13 +9,20 @@ import time
 current_time = time.strftime("%m.%d.%y_%H:%M", time.localtime())
 
 class stream_series(threading.Thread):
-    def __init__(self, URL, timeInterval=10):
+    def __init__(self, asset1, asset2, timeInterval=600):
         threading.Thread.__init__(self)
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
         self.state = threading.Condition()
-        self.URL = URL
+        __URL_raw = 'http://zeiselmair.de/h4ckamuenster/'
+
+        self.__asset1 = asset1
+        self.__asset2 = asset2
+        self.__combination = self.__asset1 + self.__asset2
+            # erweitern für Kombinationen
+
+        self.URL = __URL_raw + self.combination +'.txt'
         self.timeInteval = timeInterval
 
     def __txtload(self):
@@ -28,7 +35,7 @@ class stream_series(threading.Thread):
         series_df = pd.DataFrame(series_array, columns=['Time stamp', 'Price'])
         series_df = series_df.set_index(['Time stamp'])
         # In this case its hard coded as ETH --> sollte noch geändert werden
-        pd.DataFrame.to_csv(series_df, 'ETH_Series.csv')
+        pd.DataFrame.to_csv(series_df, self.__combination+'_Series.csv')
 
     def run(self):
         self.resume() # unpause self
