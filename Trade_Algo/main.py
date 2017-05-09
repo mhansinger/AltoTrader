@@ -17,7 +17,7 @@ pwd
 
 # set the input data with default values
 # adjust the windows to our time series!!!
-ETH_input = set_input(asset='XETH', long=4800, short=500, fee=0.0016, reinvest=0.0, investment=1000.0)
+ETH_input = set_input(asset1='XXBT', asset2='ZEUR', long=4800, short=500, fee=0.0016, reinvest=0.0, investment=1000.0)
 
 # check some parameters, e.g.:
 ETH_input.fee

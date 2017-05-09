@@ -4,11 +4,12 @@ class history(object):
     def __init__(self, input):
         self.input = input
         self.time_series = []
+        self.path = self.input.asset1+self.input.asset2+'_data'
+        print('Time series from: '+self.path)
 
     def import_history(self):
-        path = self.input.asset1+self.input.asset2 +'_data'
 
-        __raw = pd.read_csv(path)
+        __raw = pd.read_csv(self.path)
         self.time_series = pd.Series(__raw['Price'])
 
     def getRollingMean(self, __window):
