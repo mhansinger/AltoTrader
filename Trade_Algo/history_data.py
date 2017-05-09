@@ -11,7 +11,7 @@ class history(object):
 
     def import_history(self):
 
-        __raw = pd.read_csv(__file)
+        __raw = pd.read_csv(self.__file)
         self.time_series = pd.Series(__raw['Price'])
 
     def getRollingMean(self, __window):
