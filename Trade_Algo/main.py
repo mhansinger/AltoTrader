@@ -27,10 +27,13 @@ ETH_input.investment
 # initialize the trading history:  it will read the ETH stream from ftp
 ETH_history = history(ETH_input)
 
-ETH_broker = Broker_virtual(ETH_input)
+XXBT_broker = Broker_virtual(XXBT_input)
 
 # initialize the broker with the strating values
-ETH_broker.initialize()
+XXBT_broker.initialize()
 
-ETH_trade = criteria(ETH_input,ETH_broker,ETH_history)
+XXBT_trade = criteria(ETH_input,ETH_broker,ETH_history)
 
+def run(interval=300):
+    XXXBT_trade.in
+    threading.Timer(interval, run).start()
