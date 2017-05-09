@@ -15,7 +15,8 @@ import time
 class Broker_virtual(object):
     def __init__(self, input):
         self.__asset1 = input.asset1
-	    self.__asset2 = input.asset2
+        self.__asset2 = input.asset2
+        self.__pair = input.asset1+input.asset2
 
         self.asset_status = False
         self.broker_status = False
@@ -30,11 +31,11 @@ class Broker_virtual(object):
         self.__column_names = []
 
     def initialize(self):
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', 'XETH price']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', self.__asset1+'price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns= self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
-        self.__balance_df['ZEUR'] = self.__invest
-        self.__balance_df['XETH price'] = self.asset_market_bid()
+        self.__balance_df[self.__asset2] = self.__invest
+        self.__balance_df[self.__asset1+'price'] = self.asset_market_bid()
 
         print(self.__balance_df)
 
@@ -138,21 +139,20 @@ class Broker_virtual(object):
         print(balance)
 
     def asset_market_bid(self):
-        __pair = self.__asset + 'ZEUR'
-        __market_bid = self.__k.query_public('Ticker', {'pair': __pair})['result'][__pair]['b']
+
+        __market_bid = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['b']
         return float(__market_bid[0])
 
     def asset_market_ask(self):
-        __pair = self.__asset + 'ZEUR'
-        __market_ask = self.__k.query_public('Ticker', {'pair': __pair})['result'][__pair]['a']
+        __market_ask = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['a']
         return float(__market_ask[0])
 
     def get_eur_funds(self):
-        __eur_funds = self.__k.query_private('Balance')['result']['ZEUR']
+        __eur_funds = self.__k.query_private('Balance')['result']['ZEUR'] # muss noch allgemein angepasst werden!
         return float(__eur_funds)
 
     def get_asset_funds(self):
-        __asset_funds = self.__k.query_private('Balance')['result']['XETH']
+        __asset_funds = self.__k.query_private('Balance')['result'][self.__asset2]
         return float(__asset_funds)
 
     def getTime(self):
