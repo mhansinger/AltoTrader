@@ -27,16 +27,15 @@ class Broker_virtual(object):
         self.__invest = input.investment
         self.__series_name = input.series_name
         self.__balance_df = []
-        self.__balance_update_df = []
 
         self.__column_names = []
 
     def initialize(self):
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', self.__asset1+'price']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', self.__asset1+' price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns= self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.__invest
-        self.__balance_df[self.__asset1+'price'] = self.asset_market_bid()
+        self.__balance_df[self.__asset1+' price'] = self.asset_market_bid()
 
         print(self.__balance_df)
 
@@ -48,7 +47,11 @@ class Broker_virtual(object):
 
         if self.asset_status is False:
             # this only for virtual
-            __balance_np = np.array(self.__balance_df.tail())
+            try:
+                __balance_np = np.array(self.__balance_df.tail())
+            except AttributeError:
+                print('Broker muss noch initialisiert werden!')
+
             __current_eur_funds = __balance_np[-1, 2] * 0.999999
             __current_costs = __current_eur_funds * self.__fee
 
@@ -62,13 +65,13 @@ class Broker_virtual(object):
             __time = self.getTime()
 
             __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_ask]]
-            self.__balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
-            self.__balance_df = self.__balance_df.append(self.__balance_update_df)
+            __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
+            self.__balance_df = self.__balance_df.append(__balance_update_df)
 
             # write as csv file
             self.writeCSV(self.__balance_df)
             print(' ')
-            print(self.__balance_update_df)
+            print(__balance_update_df)
             print(' ')
 
             self.asset_status = True
@@ -86,7 +89,11 @@ class Broker_virtual(object):
 
         if self.asset_status is True:
             # this only for virtual
-            __balance_np = np.array(self.__balance_df.tail())
+            try:
+                __balance_np = np.array(self.__balance_df.tail())
+            except AttributeError:
+                print('Broker muss noch initialisiert werden!')
+
             __asset_bid = self.asset_market_bid()
             __current_shares = __balance_np[-1, 3] * 0.999999
             __current_costs = __current_shares * __asset_bid * self.__fee
@@ -100,12 +107,12 @@ class Broker_virtual(object):
             __time = self.getTime()
 
             __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_bid]]
-            self.__balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
-            self.__balance_df = self.__balance_df.append(self.__balance_update_df)
+            __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
+            self.__balance_df = self.__balance_df.append(__balance_update_df)
 
             # write as csv file
             self.writeCSV(self.__balance_df)
-            print(self.__balance_update_df)
+            print(__balance_update_df)
             print(' ')
 
             self.asset_status = False
@@ -116,40 +123,42 @@ class Broker_virtual(object):
         self.broker_status = False
 
 
-
     def idle(self):
         self.broker_status = True
-        __balance_np = np.array(self.__balance_df.tail())
-
+        try:
+            __balance_np = np.array(self.__balance_df.tail())
+        except AttributeError:
+            print('Broker muss noch initialisiert werden!')
+        #
         if self.asset_status is True:
             __market_price = self.asset_market_ask()
         elif self.asset_status is False:
             __market_price = self.asset_market_bid()
-
+        #
         __new_shares = __balance_np[-1,3]
-        __new_XETH = __new_shares*__market_price
+        __new_assets = __new_shares*__market_price
         __new_eur_fund = __balance_np[-1,2]
         __current_costs = 0
-
+        #
         # update time
         __time = self.getTime()
-
+        #
         # alter status ist wie neuer balance vektor
-        __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __market_price]]
-        self.__balance_update_df = pd.DataFrame(__balance_update_vec, columns = self.__column_names)
-        self.__balance_df = self.__balance_df.append(self.__balance_update_df)
+        __balance_update_vec = [[__time, __new_assets, __new_eur_fund, __new_shares, __current_costs, __market_price]]
+        __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
+        self.__balance_df = self.__balance_df.append(__balance_update_df)
 
         # write as csv file
         self.writeCSV(self.__balance_df)
 
-        print(self.__balance_update_df)
+        print(__balance_update_df)
         print(' ')
 
         self.broker_status = False
 
 
     def virtual_balance(self):
-        print(self.__balance_update_df)
+        print(self.__balance_df.tail())
 
 
     def asset_balance(self):
