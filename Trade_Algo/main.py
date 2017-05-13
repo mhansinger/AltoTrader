@@ -4,25 +4,14 @@ This is the main file to run the trading bot
 @author: mhansinger
 '''
 
-import numpy as np
-import pandas as pd
-from Broker_virtual import Broker_virtual
-from set_input import set_input
-from history_data import history
-from criteria import criteria
-import threading
+from __init__ import *
 
-# make sure you are in Trade_Algo
-pwd
+
 
 # set the input data with default values
 # adjust the windows to our time series!!!
 XETH_input = set_input(asset1='XETH', asset2='ZEUR', long=4800, short=500, fee=0.0016, reinvest=0.0, investment=1000.0)
 
-# check some parameters, e.g.:
-ETH_input.fee
-
-ETH_input.investment
 
 # initialize the trading history:  it will read the ETH stream from ftp
 XETH_history = history(XETH_input)
@@ -34,6 +23,6 @@ XETH_broker.initialize()
 
 XETH_trade = criteria(XETH_input,XETH_broker,XETH_history)
 
-def run(interval=300):
+def run(interval=600):
     XETH_trade.intersect()
     threading.Timer(interval, run).start()

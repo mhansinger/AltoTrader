@@ -7,6 +7,7 @@ from set_input import set_input
 
 '''
 NEEDS DEBUGGING!!
+
 '''
 
 import pandas as pd
@@ -39,14 +40,9 @@ class criteria(object):
         if self.__last_short > self.__last_long:
             ## das ist quasi das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
-            if self.Broker.asset_status == False & self.Broker.broker_status == False:
-                 self.Broker.buy_order()
-                 print('buy')
-                 print('long mean: ', self.__last_long)
-                 print('short mean: ', self.__last_short)
-            elif self.Broker.asset_status == True & self.Broker.broker_status == False:
-                self.Broker.idle()
-                print('buy idle')
+            if self.Broker.asset_status is False and self.Broker.broker_status is False:
+                self.Broker.buy_order()
+                print('buy')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
             else:
@@ -56,16 +52,11 @@ class criteria(object):
                 print('short mean: ', self.__last_short)
 
         elif self.__last_long > self.__last_short:
-            if self.Broker.asset_status == True & self.Broker.broker_status == False:
-                 self.Broker.sell_order()
-                 print('sell')
-                 print('long mean: ', self.__last_long)
-                 print('short mean: ', self.__last_short)
-            elif self.Broker.asset_status == False & self.Broker.broker_status == False:
-                 self.Broker.idle()
-                 print('sell idle')
-                 print('long mean: ', self.__last_long)
-                 print('short mean: ', self.__last_short)
+            if self.Broker.asset_status is True and self.Broker.broker_status is False:
+                self.Broker.sell_order()
+                print('sell')
+                print('long mean: ', self.__last_long)
+                print('short mean: ', self.__last_short)
             else:
                 self.Broker.idle()
                 print('sell idle')
