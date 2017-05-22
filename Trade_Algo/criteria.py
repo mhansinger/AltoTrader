@@ -1,13 +1,14 @@
 import numpy as np
-import pandas as pd
-from set_input import set_input
+import threading
+import time
+from datetime import datetime
 
 # Broker ist noch eine dummy Klasse. Sollte folgende Funktionen beinhalten:
 # buy_order, sell_order
 
 '''
 NEEDS DEBUGGING!!
-
+done....
 '''
 
 import pandas as pd
@@ -68,3 +69,4 @@ class criteria(object):
             print('idle')
             print('long mean: ', self.__last_long)
             print('short mean: ', self.__last_short)
+
