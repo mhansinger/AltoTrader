@@ -14,7 +14,7 @@ new class to test the run() thread within the the intersection class
 
 
 class run_strategy(threading.Thread):
-    def __init__(self, myinput, broker, history):
+    def __init__(self, myinput, broker, history, timeInterval):
         self.time_series = []
         self.short_mean = []
         self.long_mean = []
