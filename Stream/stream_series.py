@@ -20,7 +20,6 @@ class stream_series(threading.Thread):
         self.asset1 = asset1
         self.asset2 = asset2
         self.combination = self.asset1 + self.asset2
-            # erweitern für Kombinationen
 
         self.URL = __URL_raw + self.combination +'.txt'
         self.timeInteval = timeInterval
@@ -34,7 +33,6 @@ class stream_series(threading.Thread):
         # series_array = series_array.transpose()
         series_df = pd.DataFrame(series_array, columns=['Time stamp', 'Price'])
         series_df = series_df.set_index(['Time stamp'])
-        # In this case its hard coded as ETH --> sollte noch geändert werden
         pd.DataFrame.to_csv(series_df, self.combination+'_Series.csv')
 
     def run(self):

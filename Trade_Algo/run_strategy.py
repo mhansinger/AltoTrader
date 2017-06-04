@@ -1,5 +1,4 @@
 
-
 import numpy as np
 import threading
 import time
@@ -12,9 +11,9 @@ from datetime import datetime
 new class to test the run() thread within the the intersection class
 '''
 
-
 class run_strategy(threading.Thread):
     def __init__(self, myinput, broker, history, timeInterval):
+        threading.Thread.__init__(self)
         self.time_series = []
         self.short_mean = []
         self.long_mean = []
@@ -26,7 +25,6 @@ class run_strategy(threading.Thread):
         self.__last_short = []
         self.__last_long = []
 
-        threading.Thread.__init__(self)
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
@@ -75,17 +73,25 @@ class run_strategy(threading.Thread):
             print('long mean: ', self.__last_long)
             print('short mean: ', self.__last_short)
 
-    # this is the new run funciton. still to test
+    #*************************************************
+    # this is the new run funciton. still to test...
+
+    # oder evtl as eigenen Thread das alles...
     def run(self):
         self.resume() # unpause self
         while True:
-            with self.state:
-                if self.paused:
-                    self.state.wait() # block until notified
-            self.intersect()
-            print('last intersect: ' + str(datetime.now()))
-            time.sleep(self.timeInteval)
-            self.iterations += 1
+            try:    # das Programm soll nochmal aufgerufen werden, wenn ein Fehler geworfen wird.
+                with self.state:
+                    if self.paused:
+                        self.state.wait()  # block until notified
+                ###################
+                self.intersect()
+                ###################
+                print('last intersect: ' + str(datetime.now()))
+                time.sleep(self.timeInteval)
+                self.iterations += 1
+            except EmptyDataError:
+                self.run()
 
     def resume(self):
         with self.state:

@@ -10,23 +10,28 @@ from datetime import datetime
 
 # set the input data with default values
 # adjust the windows to our time series!!!
-XXRP_input = set_input(asset1='XXRP', asset2='XXBT', long=4800, short=500, fee=0.0016, reinvest=0.0, investment=1000.0)
+XXBT_input = set_input(asset1='XXBT', asset2='ZEUR', long=4800, short=500, fee=0.0016, reinvest=0.0, investment=1000.0)
 
 
 # initialize the trading history:  it will read the ETH stream from ftp
-XXRP_history = history(XXRP_input)
+XXBT_history = history(XXBT_input)
 
-XXRP_broker = Broker_virtual(XXRP_input)
+XXBT_broker = Broker_virtual(XXBT_input)
 
 # initialize the broker with the strating values
-XXRP_broker.initialize()
+XXBT_broker.initialize()
 
-XXRP_trade = run_strategy(XXRP_input,XXRP_broker,XXRP_history)
+XXBT_trade = run_strategy(XXBT_input,XXBT_broker,XXBT_history,600)
 
-def run(interval=600):
-    XETH_trade.intersect()
-    threading.Timer(interval, run).start()
+def run(myObject,interval=600):
+    try:
+        myObject.intersect()
+        threading.Timer(interval, run).start()
+    except ValueError:
+        run(myObject)
 
+
+# oder :
 
 class intersect_thread(threading.Thread):
     def __init__(self, asset, timeInterval=600):
