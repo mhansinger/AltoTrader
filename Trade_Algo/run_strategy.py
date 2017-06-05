@@ -46,24 +46,24 @@ class run_strategy(threading.Thread):
             ## entsprechend sollten wir kaufen, oder halt nicht
             if self.Broker.asset_status is False and self.Broker.broker_status is False:
                 self.Broker.buy_order()
-                print('buy')
+                print('go long')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
             else:
                 self.Broker.idle()
-                print('buy idle')
+                print('long, idle')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
 
         elif self.__last_long > self.__last_short:
             if self.Broker.asset_status is True and self.Broker.broker_status is False:
                 self.Broker.sell_order()
-                print('sell')
+                print('go short')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
             else:
                 self.Broker.idle()
-                print('sell idle')
+                print('short, idle')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
         else:

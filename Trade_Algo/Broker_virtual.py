@@ -21,7 +21,7 @@ class Broker_virtual(object):
         self.asset_status = False
         self.broker_status = False
         self.__k = krakenex.API()
-        self.__k.load_key('kraken.key')
+        #self.__k.load_key('kraken.key')
         self.__balance_all = []
         self.__fee = input.fee
         self.__invest = input.investment
@@ -168,13 +168,16 @@ class Broker_virtual(object):
         print(balance)
 
     def asset_market_bid(self):
-
         __market_bid = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['b']
         return float(__market_bid[0])
 
     def asset_market_ask(self):
         __market_ask = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['a']
         return float(__market_ask[0])
+
+    def market_price(self):
+        __market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
+        return float(__market[0])
 
     def get_eur_funds(self):
         __eur_funds = self.__k.query_private('Balance')['result'][self.__asset2] # muss noch allgemein angepasst werden!

@@ -3,8 +3,6 @@
 
 from stream_series import stream_series
 
-URL = 'http://zeiselmair.de/h4ckamuenster/results_eth.txt'
-
 Asset1 = 'XETH'
 Asset2 = 'ZEUR'
 
