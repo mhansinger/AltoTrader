@@ -31,6 +31,9 @@ class run_strategy(threading.Thread):
         self.state = threading.Condition()
         self.timeInteval = timeInterval
 
+        # IMPORTANT: Broker muss initialisiert werden!
+        self.Broker.initialize()
+
     def eval_rollings(self):
         self.short_mean = self.history.getRollingMean(self.short_win)
         self.long_mean = self.history.getRollingMean(self.long_win)
