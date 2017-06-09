@@ -169,7 +169,7 @@ class Broker(object,input):
 
         while bool(__open_orders['results']['open']):
             __open_orders = self.__k.query_private('OpenOrders')
-            __count+=1
+            __count += 1
             if __count > 20:
                 print('Order was not filled!')
                 __cancle_flage = True

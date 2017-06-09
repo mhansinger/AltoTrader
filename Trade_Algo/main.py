@@ -23,13 +23,13 @@ XXBT_broker.initialize()
 
 XXBT_trade = run_strategy(XXBT_input,XXBT_broker,XXBT_history,600)
 
-def run_new(myTrade,interval=600):
+def run_new(trade,interval=600):
     try:
-        myTrade.intersect()
-        threading.Timer(interval, run_new(myTrade)).start()
+        trade.intersect()
+        threading.Timer(interval, run_new).start()
     except ValueError:
         print('ValueError die Funktion wird erneut gestartet')
-        run(myTrade)
+        run_new(trade)
 
 
 def run(interval=600):
