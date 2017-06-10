@@ -19,9 +19,9 @@ XETH_history = history(XETH_input)
 XETH_broker = Broker(XETH_input)
 
 # initialize the broker with the strating values
-XXBT_broker.initialize()
+XETH_broker.initialize()
 
-XXBT_trade = run_strategy(XXBT_input,XXBT_broker,XXBT_history,600)
+XETH_trade = run_strategy(XETH_input,XETH_broker,XETH_history,600)
 
 def run_new(trade,interval=600):
     try:

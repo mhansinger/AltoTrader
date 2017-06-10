@@ -34,7 +34,7 @@ class Broker(object):
         else:
             self.asset_status = False
 
-        self.__column_names = ['Time stamp', self.__asset1 + ' shares', self.__asset2 +' shares', 'costs', 'Market_Price']
+        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'costs', 'Market_Price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
@@ -184,7 +184,7 @@ class Broker(object):
         print(' ')
         print(__balance_update_df)
         print(' ')
-        
+
 
     def __check_order(self,order_id):
         __order_id = order_id
@@ -209,3 +209,7 @@ class Broker(object):
             print('Success: Order was filled!\n')
 
         return __cancel_flag
+    
+    def writeCSV(self,__df):
+        __filename = self.__pair+'_balance.csv'
+        pd.DataFrame.to_csv(__df,__filename)
