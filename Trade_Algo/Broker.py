@@ -45,28 +45,43 @@ class Broker(object):
 
     def buy_order(self):
         self.broker_status = True
-        # check den Euro status
+        # check den XBT balance
         __current_asset2_funds = self.get_asset2_balance()
 
         # diese if abfrage ist ein double check
         if self.asset_status is False:
             #######################
             # kraken query
-            __volume=str(__current_asset2_funds*0.99)
-            __api_params = {'pair': self.__asset2+self.__asset1, 'type':'sell',
-                            'ordertype':'market','volume':__volume, 'trading_agreement': 'agree'}
-            __order = self.__k.query_private('AddOrder',__api_params)
+            # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
+            # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
+            __volume2=__current_asset2_funds*0.99
+            __market = self.market_price()
+            __volume1 = __volume2 / __market
+            __vol_str = str(__volume1)
+            __market_str = str(__market)
 
-            #__order_id = __order...
+            __api_params = {'pair': self.__pair,
+                            'type':'buy',
+                            'ordertype':'limit',
+                            'price': __market_str,
+                            'volume':__vol_str ,
+                            'trading_agreement':'agree'}
+            __order = self.__k.query_private('AddOrder',__api_params)
+            __order_id = __order['result']['txid'][0]
+
             # IMPORTANT: check if order is still open!
-            self.__check_order(__order)
+            __asset_flag = self.__check_order(__order_id)
             #######################
 
-        # update the balance sheet
-        # KOSTEN STIMMEN NOCH NICHT!!
-        self.update_balance(0)
+            # update the balance sheet with transaction costs
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            __cost = float(__costs)
+            self.update_balance(__costs)
 
-        self.asset_status = True
+            # change the asset status only if order was filled! this is the case if __asset_flag is Flase
+            if __asset_flag is False:
+                self.asset_status = True
+
         self.broker_status = False
 
     def sell_order(self):
@@ -79,19 +94,28 @@ class Broker(object):
             #######################
             # kraken query
             __volume=str(__current_asset1_funds*0.99)
-            __api_params = {'pair': self.__pair, 'type':'sell',
-                            'ordertype':'market','volume': __volume, 'trading_agreement': 'agree'}
+
+            __api_params = {'pair': self.__pair,
+                            'type':'sell',
+                            'ordertype':'market',
+                            'volume': __volume,
+                            'trading_agreement': 'agree'}
             __order = self.__k.query_private('AddOrder', __api_params)
+            __order_id = __order['result']['txid'][0]
 
             # IMPORTANT: check if order is still open!
-            self.__check_order(__order)
+            __asset_flag = self.__check_order(__order_id)
             #######################
 
-        # update the balance sheet
-        # KOSTEN STIMMEN NOCH NICHT!!
-        self.update_balance(0)
+            # update the balance sheet with transaction costs
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            __cost = float(__costs)
+            self.update_balance(__costs)
 
-        self.asset_status = False
+            # change the asset status only if order was filled! this is the case if __asset_flag is Flase
+            if __asset_flag is False:
+                self.asset_status = False
+
         self.broker_status = False
 
     def idle(self):
@@ -99,7 +123,7 @@ class Broker(object):
         try:
             __balance_np = np.array(self.__balance_df.tail())
         except AttributeError:
-            print('Broker muss noch initialisiert werden!')
+            print('Broker muss noch initialisiert werden!\n')
         #
         # update the balance sheet
         self.update_balance(0)
@@ -133,12 +157,14 @@ class Broker(object):
 
     def get_asset2_balance(self):
         # unsere Euros
-        __asset2_funds = self.__k.query_private('Balance')['result'][self.__asset2]
+        __asset2 = self.__asset2
+        __asset2_funds = self.__k.query_private('Balance')['result'][__asset2]
         return float(__asset2_funds)
 
     def get_asset1_balance(self):
         # unsere Ether
-        __asset1_funds = self.__k.query_private('Balance')['result'][self.__asset1]
+        __asset1=self.__asset1
+        __asset1_funds = self.__k.query_private('Balance')['result'][__asset1]
         return float(__asset1_funds)
 
     def update_balance(self,cost):
@@ -158,28 +184,28 @@ class Broker(object):
         print(' ')
         print(__balance_update_df)
         print(' ')
+        
 
-    def __check_order(self,order):
-        __order = order
-        __open_orders = self.__k.query_private('OpenOrders')
+    def __check_order(self,order_id):
+        __order_id = order_id
         __count = 0
-        __cancle_flage = False
+        __cancel_flag = False
+        __closed_orders = self.__k.query_private('ClosedOrders')['results']['closed']
 
-        while bool(__open_orders['results']['open']):
-            __open_orders = self.__k.query_private('OpenOrders')
+        # check if the order id appears in the closedOrders list
+        while bool(__order_id in __closed_orders is False):
+            __closed_orders = self.__k.query_private('ClosedOrders')['results']['closed']
             __count += 1
-            if __count > 20:
-                print('Order was not filled!')
-                __cancle_flage = True
+            if __count > 10:
+                __cancel_flag = True
                 break
-            time.sleep(20)
-        print('Yeah! Order was placed!')
+            time.sleep(30)
 
-        if __cancle_flage is True:
-            # canceln der Order wenn sie nach 400 sec nicht filled ist...
-            print('Order should be cancelled')
+        if __cancel_flag is True:
+            # cancle the order
+            self.__k.query_private('CancelOrder', {'txid': __order_id})
+            print('Order was not filled and canceled!\n')
+        else:
+            print('Success: Order was filled!\n')
 
-
-
-
-
+        return __cancel_flag
