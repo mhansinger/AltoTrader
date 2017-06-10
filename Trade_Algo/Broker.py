@@ -34,12 +34,13 @@ class Broker(object):
         else:
             self.asset_status = False
 
-        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'costs', 'Market_Price']
+        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'costs', 'Market_Price', 'Order Id']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
         self.__balance_df[self.__asset1] = self.get_asset1_balance()
         self.__balance_df['Market_Price'] = self.market_price()
+        self.__balance_df['Order Id'] = '-'
 
         print(self.__balance_df)
 
@@ -76,7 +77,7 @@ class Broker(object):
             # update the balance sheet with transaction costs
             __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
             __cost = float(__costs)
-            self.update_balance(__costs)
+            self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
             if __asset_flag is False:
@@ -110,7 +111,7 @@ class Broker(object):
             # update the balance sheet with transaction costs
             __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
             __cost = float(__costs)
-            self.update_balance(__costs)
+            self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
             if __asset_flag is False:
@@ -126,7 +127,7 @@ class Broker(object):
             print('Broker muss noch initialisiert werden!\n')
         #
         # update the balance sheet
-        self.update_balance(0)
+        self.update_balance(0,'-')
 
         self.broker_status = False
 
@@ -167,15 +168,16 @@ class Broker(object):
         __asset1_funds = self.__k.query_private('Balance')['result'][__asset1]
         return float(__asset1_funds)
 
-    def update_balance(self,cost):
+    def update_balance(self,cost,id):
         # update time
         __time = self.getTime()
         __new_asset1 = self.get_asset1_balance()
         __new_asset2 = self.get_asset2_balance()
         __market_price = self.market_price()
         __costs = cost
+        __id = id
 
-        __balance_update_vec = [[__time, __new_asset1, __new_asset2, __costs, __market_price]]
+        __balance_update_vec = [[__time, __new_asset1, __new_asset2, __costs, __market_price, __id]]
         __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
         self.__balance_df = self.__balance_df.append(__balance_update_df)
 
@@ -209,7 +211,8 @@ class Broker(object):
             print('Success: Order was filled!\n')
 
         return __cancel_flag
-    
+
+    # schreibt ein CSV raus
     def writeCSV(self,__df):
         __filename = self.__pair+'_balance.csv'
         pd.DataFrame.to_csv(__df,__filename)
