@@ -23,13 +23,13 @@ XETH_broker.initialize()
 
 XETH_trade = run_strategy(XETH_input,XETH_broker,XETH_history,600)
 
-def run_new(trade,interval=600):
+def run_new(interval=600):
     try:
-        trade.intersect()
+        XETH.intersect()
         threading.Timer(interval, run_new).start()
     except ValueError:
         print('ValueError die Funktion wird erneut gestartet')
-        run_new(trade)
+        run_new()
 
 
 def run(interval=600):

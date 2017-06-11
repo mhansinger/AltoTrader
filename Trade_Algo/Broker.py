@@ -34,11 +34,12 @@ class Broker(object):
         else:
             self.asset_status = False
 
-        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'costs', 'Market_Price', 'Order Id']
+        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'fee', 'Market_Price', 'Order Id']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
         self.__balance_df[self.__asset1] = self.get_asset1_balance()
+        self.__balance_df['fee'] = self.market_price()
         self.__balance_df['Market_Price'] = self.market_price()
         self.__balance_df['Order Id'] = '-'
 
@@ -56,10 +57,10 @@ class Broker(object):
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
             __volume2=__current_asset2_funds*0.99
-            __market = self.market_price()
-            __volume1 = __volume2 / __market
+            __bid = self.asset_market_bid()
+            __volume1 = __volume2 / __bid
             __vol_str = str(__volume1)
-            __market_str = str(__market)
+            __market_str = str(__bid)
 
             __api_params = {'pair': self.__pair,
                             'type':'buy',
@@ -75,7 +76,7 @@ class Broker(object):
             #######################
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['fee']
             __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
@@ -109,7 +110,7 @@ class Broker(object):
             #######################
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['fee']
             __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
@@ -192,11 +193,11 @@ class Broker(object):
         __order_id = order_id
         __count = 0
         __cancel_flag = False
-        __closed_orders = self.__k.query_private('ClosedOrders')['results']['closed']
+        __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
 
         # check if the order id appears in the closedOrders list
         while bool(__order_id in __closed_orders is False):
-            __closed_orders = self.__k.query_private('ClosedOrders')['results']['closed']
+            __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
             __count += 1
             if __count > 10:
                 __cancel_flag = True
@@ -216,3 +217,6 @@ class Broker(object):
     def writeCSV(self,__df):
         __filename = self.__pair+'_balance.csv'
         pd.DataFrame.to_csv(__df,__filename)
+
+    def our_balance(self):
+        print(self.__balance_df.tail())

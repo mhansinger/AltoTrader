@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import time
 from datetime import datetime
+import sys
 
 # Broker ist noch eine dummy Klasse. Sollte folgende Funktionen beinhalten:
 # buy_order, sell_order
@@ -42,7 +43,11 @@ class run_strategy(threading.Thread):
 
     def intersect(self):
         # call the evaluation
-        self.eval_rollings()
+        try:
+            self.eval_rollings()
+        except FileNotFoundError:
+            print('Check the name of the data directory: XY_data')
+            sys.exit(0)
 
         if self.__last_short > self.__last_long:
             ## das ist quasi das Kriterium, um zu checken ob wir Währung haben oder nicht,
@@ -78,6 +83,8 @@ class run_strategy(threading.Thread):
 
     #*************************************************
     # this is the new run funciton. still to test...
+
+
 
     # oder evtl as eigenen Thread das alles...
     def run(self):
