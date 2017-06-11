@@ -76,7 +76,7 @@ class Broker(object):
             #######################
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['fee']
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
             __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
@@ -110,7 +110,7 @@ class Broker(object):
             #######################
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['fee']
+            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
             __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
