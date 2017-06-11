@@ -81,8 +81,10 @@ class Broker(object):
             self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
-            if __asset_flag is False:
-                self.asset_status = True
+            if __asset_flag is True:
+                self.asset_status = False
+            else:
+                self.asset_status =True
 
         self.broker_status = False
 
@@ -115,7 +117,10 @@ class Broker(object):
             self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
-            if __asset_flag is False:
+
+            if __asset_flag is True:
+                self.asset_status = True
+            else:
                 self.asset_status = False
 
         self.broker_status = False
