@@ -29,10 +29,7 @@ class Broker(object):
 
     def initialize(self):
         # check den asset_status von asset1:
-        if self.get_asset1_balance() > self.get_asset2_balance():
-            self.asset_status = True
-        else:
-            self.asset_status = False
+        self.asset_check()
 
         self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'fee', 'Market_Price', 'Order Id']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
@@ -57,22 +54,26 @@ class Broker(object):
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
             __volume2=__current_asset2_funds*0.99
-            __bid = self.asset_market_bid()
-            __volume1 = __volume2 / __bid
+            __ask = self.asset_market_ask()
+            __volume1 = __volume2 / __ask
             __vol_str = str(__volume1)
-            __market_str = str(__bid)
+            __market_str = str(__ask)
 
             __api_params = {'pair': self.__pair,
                             'type':'buy',
-                            'ordertype':'limit',
-                            'price': __market_str,
-                            'volume':__vol_str ,
+                            'ordertype':'market',
+                            #'price': __market_str,
+                            'volume':__vol_str,
                             'trading_agreement':'agree'}
             __order = self.__k.query_private('AddOrder',__api_params)
-            __order_id = __order['result']['txid'][0]
+
+            try:
+                __order_id = __order['result']['txid'][0]
+            except KeyError:
+                print('Probably not enough funding...')
 
             # IMPORTANT: check if order is still open!
-            __asset_flag = self.__check_order(__order_id)
+            __asset_flag = self.check_order(__order_id)
             #######################
 
             # update the balance sheet with transaction costs
@@ -81,10 +82,7 @@ class Broker(object):
             self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
-            if __asset_flag is True:
-                self.asset_status = False
-            else:
-                self.asset_status =True
+            self.asset_check()
 
         self.broker_status = False
 
@@ -105,10 +103,13 @@ class Broker(object):
                             'volume': __volume,
                             'trading_agreement': 'agree'}
             __order = self.__k.query_private('AddOrder', __api_params)
-            __order_id = __order['result']['txid'][0]
+            try:
+                __order_id = __order['result']['txid'][0]
+            except KeyError:
+                print('Probably not enough funding...')
 
             # IMPORTANT: check if order is still open!
-            __asset_flag = self.__check_order(__order_id)
+            asset_flag = self.check_order(__order_id)
             #######################
 
             # update the balance sheet with transaction costs
@@ -117,11 +118,7 @@ class Broker(object):
             self.update_balance(__costs,__order_id)
 
             # change the asset status only if order was filled! this is the case if __asset_flag is Flase
-
-            if __asset_flag is True:
-                self.asset_status = True
-            else:
-                self.asset_status = False
+            self.asset_check()
 
         self.broker_status = False
 
@@ -194,14 +191,17 @@ class Broker(object):
         print(' ')
 
 
-    def __check_order(self,order_id):
+    def check_order(self,order_id):
+        # muss überarbeitet werden!
         __order_id = order_id
         __count = 0
         __cancel_flag = False
         __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
 
         # check if the order id appears in the closedOrders list
-        while bool(__order_id in __closed_orders is False):
+
+        # BOOL Abfrage stimmt noch nicht...
+        while bool(__order_id in __closed_orders) is False:
             __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
             __count += 1
             if __count > 10:
@@ -225,3 +225,11 @@ class Broker(object):
 
     def our_balance(self):
         print(self.__balance_df.tail())
+
+    def asset_check(self):
+        __asset1 = self.get_asset1_balance()
+        __asset2 = self.get_asset2_balance()
+        if __asset1 > __asset2:
+            self.asset_status = True
+        else:
+            self.asset_status = False
