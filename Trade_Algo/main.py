@@ -14,9 +14,7 @@ XETH_input = set_input(asset1='XETH', asset2='XXBT', long=1000, short=470, fee=0
 
 
 # initialize the trading history:  it will read the ETH stream from ftp
-XETH_history = history(XETH_input)
-
-XETH_broker = Broker(XETH_input)
+XETH_history = history(XETH_input);XETH_broker = Broker(XETH_input)
 
 # initialize the broker with the strating values
 XETH_broker.initialize()

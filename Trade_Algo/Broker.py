@@ -53,7 +53,7 @@ class Broker(object):
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
-            __volume2=__current_asset2_funds*0.99
+            __volume2=__current_asset2_funds*0.9999
             __ask = self.asset_market_ask()
             __volume1 = __volume2 / __ask
             __vol_str = str(__volume1)
@@ -95,7 +95,7 @@ class Broker(object):
         if self.asset_status is True:
             #######################
             # kraken query
-            __volume=str(__current_asset1_funds*0.99)
+            __volume=str(__current_asset1_funds*0.9999)
 
             __api_params = {'pair': self.__pair,
                             'type':'sell',
@@ -196,13 +196,13 @@ class Broker(object):
         __order_id = order_id
         __count = 0
         __cancel_flag = False
-        __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
+        __open_orders = self.__k.query_private('OpenOrders')['result']['open']
 
         # check if the order id appears in the closedOrders list
 
         # BOOL Abfrage stimmt noch nicht...
-        while bool(__order_id in __closed_orders) is False:
-            __closed_orders = self.__k.query_private('ClosedOrders')['result']['closed']
+        while bool(__order_id in __open_orders) is True:
+            __open_orders = self.__k.query_private('OpenOrders')['result']['open']
             __count += 1
             if __count > 10:
                 __cancel_flag = True
@@ -229,6 +229,8 @@ class Broker(object):
     def asset_check(self):
         __asset1 = self.get_asset1_balance()
         __asset2 = self.get_asset2_balance()
+        # normalize the price
+        __asset2 = __asset2/self.market_price()
         if __asset1 > __asset2:
             self.asset_status = True
         else:
