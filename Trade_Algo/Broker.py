@@ -192,7 +192,7 @@ class Broker(object):
 
 
     def check_order(self,order_id):
-        # muss überarbeitet werden!
+        print('Order check')
         __order_id = order_id
         __count = 0
         __cancel_flag = False
@@ -202,6 +202,7 @@ class Broker(object):
 
         # BOOL Abfrage stimmt noch nicht...
         while bool(__order_id in __open_orders) is True:
+            print('Order is still open ... ')
             __open_orders = self.__k.query_private('OpenOrders')['result']['open']
             __count += 1
             if __count > 10:
