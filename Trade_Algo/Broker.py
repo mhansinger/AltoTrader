@@ -44,6 +44,7 @@ class Broker(object):
 
     def buy_order(self):
         self.broker_status = True
+        self.asset_check()
         # check den XBT balance
         __current_asset2_funds = self.get_asset2_balance()
 
@@ -90,7 +91,7 @@ class Broker(object):
         self.broker_status = True
         #__asset1_ask = self.asset1_market_ask()
         __current_asset1_funds = self.get_asset1_balance()
-
+        self.asset_check()
         # diese if abfrage ist ein double check
         if self.asset_status is True:
             #######################
