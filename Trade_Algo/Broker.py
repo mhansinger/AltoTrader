@@ -187,9 +187,10 @@ class Broker(object):
 
         # write as csv file
         self.writeCSV(self.__balance_df)
-        print(' ')
         print(__balance_update_df)
-        print(' ')
+
+        # write the txt files for upload to check online
+        self.__writeUploadTXT(__new_asset1, __new_asset2)
 
 
     def check_order(self,order_id):
@@ -216,7 +217,7 @@ class Broker(object):
             self.__k.query_private('CancelOrder', {'txid': __order_id})
             print('Order was not filled and canceled!\n')
         else:
-            print('Success: Order was filled!\n')
+            print('Success: Order was filled!')
 
         return __cancel_flag
 
@@ -237,3 +238,14 @@ class Broker(object):
             self.asset_status = True
         else:
             self.asset_status = False
+
+    def __UploadTXT(self,asset1,asset2):
+        __asset1 = asset1
+        __asset2 = asset2
+        __filename1 = self.__asset1+'.txt'
+        __filename2 = self.__asset2+'.txt'
+        with open(__filename1, "w") as text_file:
+            text_file.write('%s' % __asset1)
+        with open(__filename2, "w") as text_file:
+            text_file.write('%s' % __asset2)
+

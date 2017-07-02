@@ -25,7 +25,7 @@ def run_new(interval=600):
     try:
         XETH_trade.intersect()
         threading.Timer(interval, run_new).start()
-    except ValueError:
+    except:
         print('ValueError die Funktion wird erneut gestartet')
         run_new()
 

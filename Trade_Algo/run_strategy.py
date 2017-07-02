@@ -57,11 +57,13 @@ class run_strategy(threading.Thread):
                 print('go long')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
+                print(' ')
             else:
                 self.Broker.idle()
-                print('long, idle')
+                print('keep calm and HODL')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
+                print(' ')
 
         elif self.__last_long > self.__last_short:
             if self.Broker.asset_status is True and self.Broker.broker_status is False:
@@ -69,21 +71,24 @@ class run_strategy(threading.Thread):
                 print('go short')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
+                print(' ')
             else:
                 self.Broker.idle()
                 print('short, idle')
                 print('long mean: ', self.__last_long)
                 print('short mean: ', self.__last_short)
+                print(' ')
         else:
             ## idle, soll nix machen
             self.Broker.idle()
             print('idle')
             print('long mean: ', self.__last_long)
             print('short mean: ', self.__last_short)
+            print(' ')
 
     #*************************************************
     # this is the new run funciton. still to test...
-
+    # not to use...
 
 
     # oder evtl as eigenen Thread das alles...
