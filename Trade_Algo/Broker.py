@@ -24,6 +24,7 @@ class Broker(object):
         self.__asset2_funds = []
         self.__balance_all = []
         self.__balance_df = []
+        self.__lastbuy = []
 
         self.__column_names = []
 
@@ -31,13 +32,13 @@ class Broker(object):
         # check den asset_status von asset1:
         self.asset_check()
 
-        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'fee', 'Market_Price', 'Order Id']
+        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'fee', 'Market Price', 'Order Id']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
         self.__balance_df[self.__asset1] = self.get_asset1_balance()
         self.__balance_df['fee'] = self.market_price()
-        self.__balance_df['Market_Price'] = self.market_price()
+        self.__balance_df['Market Price'] = self.market_price()
         self.__balance_df['Order Id'] = '-'
 
         print(self.__balance_df)
@@ -54,11 +55,11 @@ class Broker(object):
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
-            __volume2=__current_asset2_funds*0.9999
+            __volume2 = __current_asset2_funds*0.9999
             __ask = self.asset_market_ask()
             __volume1 = __volume2 / __ask
             __vol_str = str(__volume1)
-            __market_str = str(__ask)
+
 
             __api_params = {'pair': self.__pair,
                             'type':'buy',
@@ -74,29 +75,31 @@ class Broker(object):
                 print('Probably not enough funding...')
 
             # IMPORTANT: check if order is still open!
-            __asset_flag = self.check_order(__order_id)
+            self.check_order(__order_id)
             #######################
+
+            # store the last buy price, to compare with sell price
+            self.__lastbuy = __ask
 
             # update the balance sheet with transaction costs
             __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
-            # change the asset status only if order was filled! this is the case if __asset_flag is Flase
+            # change the asset status !
             self.asset_check()
 
         self.broker_status = False
 
     def sell_order(self):
         self.broker_status = True
-        #__asset1_ask = self.asset1_market_ask()
+        __bid = self.asset_market_bid()
         __current_asset1_funds = self.get_asset1_balance()
         self.asset_check()
         # diese if abfrage ist ein double check
         if self.asset_status is True:
             #######################
             # kraken query
-            __volume=str(__current_asset1_funds*0.9999)
+            __volume = str(__current_asset1_funds*0.9999)
 
             __api_params = {'pair': self.__pair,
                             'type':'sell',
@@ -110,15 +113,17 @@ class Broker(object):
                 print('Probably not enough funding...')
 
             # IMPORTANT: check if order is still open!
-            asset_flag = self.check_order(__order_id)
+            self.check_order(__order_id)
             #######################
+            # checkt ob niedriger verkauft wird als gekauft
+            if self.__lastbuy > __bid:
+                print('Bad Deal!\n SELL < BUY\n')
 
             # update the balance sheet with transaction costs
             __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            __cost = float(__costs)
             self.update_balance(__costs,__order_id)
 
-            # change the asset status only if order was filled! this is the case if __asset_flag is Flase
+            # change the asset status !
             self.asset_check()
 
         self.broker_status = False
@@ -190,7 +195,7 @@ class Broker(object):
         print(__balance_update_df)
 
         # write the txt files for upload to check online
-        self.__writeUploadTXT(__new_asset1, __new_asset2)
+        self.__writeTXT(__new_asset1, __new_asset2)
 
 
     def check_order(self,order_id):
@@ -219,7 +224,6 @@ class Broker(object):
         else:
             print('Success: Order was filled!')
 
-        return __cancel_flag
 
     # schreibt ein CSV raus
     def writeCSV(self,__df):
@@ -239,13 +243,14 @@ class Broker(object):
         else:
             self.asset_status = False
 
-    def __UploadTXT(self,asset1,asset2):
-        __asset1 = asset1
-        __asset2 = asset2
+    # speichert die aktuellen ETH und BTC werte der Krake raus, für weiteren Upload
+    def __writeTXT(self,asset1,asset2):
+        __asset_balance_1 = asset1
+        __asset_balance_2 = asset2
         __filename1 = self.__asset1+'.txt'
         __filename2 = self.__asset2+'.txt'
         with open(__filename1, "w") as text_file:
-            text_file.write('%s' % __asset1)
+            text_file.write('%s' % __asset_balance_1)
         with open(__filename2, "w") as text_file:
-            text_file.write('%s' % __asset2)
+            text_file.write('%s' % __asset_balance_2)
 
