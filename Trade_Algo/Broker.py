@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import krakenex
 import time
+import os
 
 class Broker(object):
     def __init__(self,input):
@@ -32,14 +33,19 @@ class Broker(object):
         # check den asset_status von asset1:
         self.asset_check()
 
-        self.__column_names = ['Time stamp', self.__asset1 , self.__asset2, 'fee', 'Market Price', 'Order Id']
-        self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
-        self.__balance_df['Time stamp'] = self.getTime()
-        self.__balance_df[self.__asset2] = self.get_asset2_balance()
-        self.__balance_df[self.__asset1] = self.get_asset1_balance()
-        self.__balance_df['fee'] = self.market_price()
-        self.__balance_df['Market Price'] = self.market_price()
-        self.__balance_df['Order Id'] = '-'
+        # existiert bereits ein blance sheet? z.b. nach neustart
+        if os.path.exists(self.__pair+'_balance.csv'):
+            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
+            self.__balance_df = pd.read_csv(self.__pair+'_balance.csv',index_col=0)
+        else:
+            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
+            self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
+            self.__balance_df['Time stamp'] = self.getTime()
+            self.__balance_df[self.__asset2] = self.get_asset2_balance()
+            self.__balance_df[self.__asset1] = self.get_asset1_balance()
+            self.__balance_df['fee'] = self.market_price()
+            self.__balance_df['Market Price'] = self.market_price()
+            self.__balance_df['Order Id'] = '-'
 
         print(self.__balance_df)
 
@@ -59,7 +65,6 @@ class Broker(object):
             __ask = self.asset_market_ask()
             __volume1 = __volume2 / __ask
             __vol_str = str(__volume1)
-
 
             __api_params = {'pair': self.__pair,
                             'type':'buy',
@@ -194,7 +199,7 @@ class Broker(object):
         self.writeCSV(self.__balance_df)
         print(__balance_update_df)
 
-        # write the txt files for upload to check online
+        # schreibt die beiden .txt für den online upload
         self.__writeTXT(__new_asset1, __new_asset2)
 
 
@@ -207,7 +212,7 @@ class Broker(object):
 
         # check if the order id appears in the closedOrders list
 
-        # BOOL Abfrage stimmt noch nicht...
+        # BOOL Abfrage ob Order ausgeführt wurde
         while bool(__order_id in __open_orders) is True:
             print('Order is still open ... ')
             __open_orders = self.__k.query_private('OpenOrders')['result']['open']
@@ -243,7 +248,7 @@ class Broker(object):
         else:
             self.asset_status = False
 
-    # speichert die aktuellen ETH und BTC werte der Krake raus, für weiteren Upload
+    # speichert die aktuellen ETH und BTC Werte der Krake raus, für weiteren Upload
     def __writeTXT(self,asset1,asset2):
         __asset_balance_1 = asset1
         __asset_balance_2 = asset2

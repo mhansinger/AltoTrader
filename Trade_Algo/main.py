@@ -19,14 +19,15 @@ XETH_input = set_input(asset1='XETH', asset2='XXBT', long=1000, short=470, fee=0
 # initialize the broker with the strating values
 XETH_broker.initialize()
 
-XETH_trade = run_strategy(XETH_input,XETH_broker,XETH_history,600)
+XETH_trade = run_strategy(XETH_input,XETH_broker,XETH_history,timeInterval=600)
 
 def run_new(interval=600):
     try:
         XETH_trade.intersect()
         threading.Timer(interval, run_new).start()
     except:
-        print('ValueError die Funktion wird erneut gestartet')
+        print("Fehler:", sys.exc_info()[0])
+        print('Wird erneut gestartet...')
         run_new()
 
 
