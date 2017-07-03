@@ -11,13 +11,13 @@ class uploadBalance(threading.Thread):
     '''
     Für den Upload der aktuellen Kurse auf die Website
     '''
-    def __init__(self, asset1, asset2, url=None, serverpath=None, timeInterval=3600, user=None, password=None):
+    def __init__(self, asset1, asset2, url=None, serverpath='/AT/', timeInterval=3600, user=None, password=None):
         threading.Thread.__init__(self)
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
         self.state = threading.Condition()
-        self.__URL_raw = url #'http://zeiselmair.de/h4ckamuenster/'
+        self.__URL = url #'http://zeiselmair.de/h4ckamuenster/'
 
         self.asset1 = asset1
         self.asset2 = asset2
@@ -37,10 +37,10 @@ class uploadBalance(threading.Thread):
             print("Information missing. Aborting.")
             return
         filepath=asset+'.txt'
-        session = ftplib.FTP(self.__URL_raw, self.__user, self.__pw)
+        session = ftplib.FTP(self.__URL, self.__user, self.__pw)
         myfile = open(filepath, 'rb')
-        serverpath=self.serverpath+asset+'.txt'
-        session.storbinary('STOR ' + serverpath, myfile)
+        fullserverpath=self.serverpath+asset+'.txt'
+        session.storbinary('STOR ' + fullserverpath, myfile)
         file.close()
         session.quit()
 

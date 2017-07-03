@@ -10,12 +10,15 @@ class history(object):
         print('Time series from: '+self.path)
 
     def import_history(self):
-
+        # liest die Zeitreihe ein, z.B. XETH_Series.csv mit einer column: Price
         __raw = pd.read_csv(self.path)
         self.time_series = pd.Series(__raw['Price'])
 
-    def getRollingMean(self, __window):
 
+    def getRollingMean(self, __window):
+        # berechnet den Rolling mean
+
+        # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
         self.import_history()
 
         try:

@@ -26,16 +26,13 @@ def run_new(interval=600):
         XETH_trade.intersect()
         threading.Timer(interval, run_new).start()
     except:
-        print("Fehler:", sys.exc_info()[0])
+        print("Fehler: ", sys.exc_info()[0])
         print('Wird erneut gestartet...')
         run_new()
-
 
 def run(interval=600):
     XLTC_trade.intersect()
     threading.Timer(interval, run).start()
-
-
 
 # oder :
 
