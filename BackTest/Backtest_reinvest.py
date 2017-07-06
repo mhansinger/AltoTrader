@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import copy
+#
 
 class myBacktest_SMAreinvest(object):
 
@@ -18,7 +19,7 @@ class myBacktest_SMAreinvest(object):
         @author: mhansinger
     '''
 
-    def __init__(self, time_series, investment=1000.0, transaction_fee=0.0016):
+    def __init__(self, time_series, Hodl=False, investment=1000.0, transaction_fee=0.0016):
 
         self.__time_series = time_series
         self.__shares = np.zeros(len(self.__time_series))
@@ -42,6 +43,9 @@ class myBacktest_SMAreinvest(object):
         self.__current_fee = []
         self.best_data = []
         self.__position = False
+        # hodl ensures not to sell below last buy price!
+        self.__hodl=Hodl
+        self.__lastBuy = 0
 
         # check for data type
         try:
@@ -75,6 +79,12 @@ class myBacktest_SMAreinvest(object):
         self.__trades[pos] = 1
         self.__position = True
 
+        # if Hodl is activated, only sells above the last buy price!
+        # if deactivated, self.__lastBuy=0
+        if self.__hodl:
+            self.__lastBuy = self.__time_series[pos]
+            #print(self.__lastBuy)
+
     def __exitMarket(self, pos):
        # self.__current_fee = (self.__shares[pos-1] * self.__time_series[pos]) * self.__transaction_fee
         self.__portfolio[pos] = self.__shares[pos-1] * self.__time_series[pos] * (1.0 - self.__transaction_fee)
@@ -98,7 +108,7 @@ class myBacktest_SMAreinvest(object):
     def __log_return(self,pos):
         self.__log_returns[pos] = np.log(self.__time_series[pos]/self.__time_series[pos-1])
 
-    def buyAndHold(self):
+    def Hodl(self):
         ''' checkt Portfolioentwicklung bei reinem Buy and Hold '''
         __initialShares = self.__investment/self.__time_series[0]
         __finalPortfolio = __initialShares * self.__time_series[-1:]
@@ -127,17 +137,16 @@ class myBacktest_SMAreinvest(object):
                 if self.__position == False:
                     # our position is short and we want to buy
                     self.__enterMarket(i)
-                elif self.__position == True:
+                else: #self.__position == True:
                     # we hold a position and don't want to sell: portfolio is increasing
                     self.__updatePortfolio(i)
 
             elif self.__short_mean[i] <= self.__long_mean[i]:
-                if self.__position == True:
+                if self.__position == True and self.__time_series[i] > self.__lastBuy:
                     # we should get out of the market and sell:
                     self.__exitMarket(i)
-                elif self.__position == False:
-                    # do nothing for now
-                    self.__downPortfolio(i)
+                else:
+                    self.__updatePortfolio(i)
 
             if self.__portfolio[i] < 0.0:
                print('Skip loop, negative portfolio')
@@ -228,10 +237,10 @@ class myBacktest_SMAreinvest(object):
         pd.DataFrame.to_csv(pd.DataFrame(__output), filename)
         self.best_data = __output
 
-        if self.buyAndHold() > __best_portfolio[-1]:
-            print('\nSimples buy and hold wäre besser gewesen:\n')
+        if self.Hodl() > __best_portfolio[-1]:
+            print('\nHodln wäre besser gewesen:\n')
             print('Portfolio mit Strategie: ',__best_portfolio[-1],' basierend auf einem Investment von: ',self.__investment)
-            print('\n Buy and Hold: ', self.buyAndHold())
+            print('\n Nur Hodln: ', self.Hodl())
 
         return self.best_data, __bestWindow_long, __bestWindow_short
 
@@ -241,17 +250,18 @@ class myBacktest_SMAreinvest(object):
         plt.figure(1)
         plt.subplot(211)
         plt.plot(self.__time_series,linewidth=2.0)
-        plt.plot(self.__getRollingMean(shortwin),linewidth=2.0)
-        plt.plot(self.__getRollingMean(longwin),linewidth=2.0)
+        plt.plot(self.__getRollingMean(shortwin),linewidth=1.5)
+        plt.plot(self.__getRollingMean(longwin),linewidth=1.5)
         plt.legend(['Time series', 'short window', 'long window'])
+
         plt.subplot(212)
-        plt.plot(self.best_data.best_portfolio, linewidth=2.0)
+        plt.plot(self.best_data.best_portfolio, linewidth=1.5)
         plt.legend(['Portfolio'])
         plt.title('Time Series')
 
         plt.figure(2)
         plt.subplot(211)
-        plt.plot(self.best_data.best_shares, linewidth=2.0)
+        plt.plot(self.best_data.best_shares, linewidth=1.0)
         plt.legend(['Shares'])
         plt.subplot(212)
         plt.plot(self.best_data.best_returns, linewidth=1.0)
@@ -265,7 +275,11 @@ class myBacktest_SMAreinvest(object):
         stats.probplot(self.best_data.best_returns, dist="norm", plot=pylab)
         pylab.show()
 
-    def buyHoldPlot(self):
+    def boxPlot(self):
+        import matplotlib.pyplot as plt
+        plt.boxplot(abs(self.best_data.best_returns))
+
+    def HodlPlot(self):
         __initialShares = self.__investment/self.__time_series[0]
         __buyHoldseries = __initialShares * self.__time_series
 
