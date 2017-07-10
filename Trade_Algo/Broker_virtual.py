@@ -64,7 +64,7 @@ class Broker_virtual(object):
             # update time
             __time = self.getTime()
 
-            __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_ask]]
+            __balance_update_vec = [[__time, __new_XETH, __new_eur_fund, __new_shares, __current_costs, __asset_ask ]
             __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
             self.__balance_df = self.__balance_df.append(__balance_update_df)
 

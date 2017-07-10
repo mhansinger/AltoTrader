@@ -3,7 +3,7 @@ import pandas as pd
 import copy
 #
 
-class myBacktest_SMAreinvest(object):
+class SMAreinvest(object):
 
     '''
         This is a simple Backtesting strategy based on Rolling Mean
@@ -19,7 +19,7 @@ class myBacktest_SMAreinvest(object):
         @author: mhansinger
     '''
 
-    def __init__(self, time_series, Hodl=False, investment=1000.0, transaction_fee=0.0016):
+    def __init__(self, time_series, investment=1000.0, transaction_fee=0.0016):
 
         self.__time_series = time_series
         self.__shares = np.zeros(len(self.__time_series))
@@ -43,9 +43,6 @@ class myBacktest_SMAreinvest(object):
         self.__current_fee = []
         self.best_data = []
         self.__position = False
-        # hodl ensures not to sell below last buy price!
-        self.__hodl=Hodl
-        self.__lastBuy = 0
 
         # check for data type
         try:
@@ -78,12 +75,6 @@ class myBacktest_SMAreinvest(object):
         self.__costs[pos] = self.__costs[pos-1] + (self.__shares[pos] * self.__time_series[pos]) * self.__transaction_fee
         self.__trades[pos] = 1
         self.__position = True
-
-        # if Hodl is activated, only sells above the last buy price!
-        # if deactivated, self.__lastBuy=0
-        if self.__hodl:
-            self.__lastBuy = self.__time_series[pos]
-            #print(self.__lastBuy)
 
     def __exitMarket(self, pos):
        # self.__current_fee = (self.__shares[pos-1] * self.__time_series[pos]) * self.__transaction_fee
@@ -142,11 +133,11 @@ class myBacktest_SMAreinvest(object):
                     self.__updatePortfolio(i)
 
             elif self.__short_mean[i] <= self.__long_mean[i]:
-                if self.__position == True and self.__time_series[i] > self.__lastBuy:
+                if self.__position == True:
                     # we should get out of the market and sell:
                     self.__exitMarket(i)
                 else:
-                    self.__updatePortfolio(i)
+                    self.__downPortfolio(i)
 
             if self.__portfolio[i] < 0.0:
                print('Skip loop, negative portfolio')
@@ -155,20 +146,8 @@ class myBacktest_SMAreinvest(object):
         print("nach SMA: ", self.__portfolio[-1])
 
 
-    def returnSMA_crossOver(self, window_long, window_short = 1):
-        ''' if short = 1 --> cross over with time series!'''
-        '''returns: portfolio, gain, shares, trades in DataFrame format'''
-        self.__window_long = window_long
-        self.__window_short = window_short
 
-        #print("Window: ",  self.__window )
-        self.SMA_crossOver()
-
-        return pd.DataFrame(self.__portfolio, columns=['portfolio']),  \
-               pd.DataFrame(self.__shares, columns=['shares']), pd.DataFrame(self.__trades, columns=['trades']), \
-               pd.DataFrame(self.__log_returns, columns=['log returns'])
-
-    def optimize_SMAcrossover(self, window_long_min, window_long_max, long_interval, window_short_min=1,
+    def optimize(self, window_long_min, window_long_max, long_interval, window_short_min=1,
                               window_short_max=1, short_interval=1):
         '''should optimize the window for the best SMA'''
 
@@ -278,6 +257,7 @@ class myBacktest_SMAreinvest(object):
     def boxPlot(self):
         import matplotlib.pyplot as plt
         plt.boxplot(abs(self.best_data.best_returns))
+        plt.show()
 
     def HodlPlot(self):
         __initialShares = self.__investment/self.__time_series[0]

@@ -10,7 +10,7 @@ class history(object):
         print('Time series from: '+self.path)
 
     def import_history(self):
-        # liest die Zeitreihe ein, z.B. XETH_Series.csv mit einer column: Price
+        # liest die Zeitreihe ein, z.B. XETH_   Series.csv mit einer column: Price
         __raw = pd.read_csv(self.path)
         self.time_series = pd.Series(__raw['Price'])
 

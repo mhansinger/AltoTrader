@@ -27,7 +27,7 @@ def run_new(interval=600):
         threading.Timer(interval, run_new).start()
     except:
         print("Fehler: ", sys.exc_info()[0])
-        print('Wird erneut gestartet...')
+        print('Wird erneut gestartet...\n')
         run_new()
 
 def run(interval=600):
@@ -35,7 +35,7 @@ def run(interval=600):
     threading.Timer(interval, run).start()
 
 # oder :
-
+'''
 class intersect_thread(threading.Thread):
     def __init__(self, asset, timeInterval=600):
         threading.Thread.__init__(self)
@@ -66,3 +66,4 @@ class intersect_thread(threading.Thread):
         with self.state:
             self.paused = True  # make self block and wait
             print('Strategy is currently paused!')
+'''

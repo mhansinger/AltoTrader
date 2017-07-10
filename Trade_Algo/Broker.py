@@ -33,21 +33,16 @@ class Broker(object):
         # check den asset_status von asset1:
         self.asset_check()
 
-        # existiert bereits ein blance sheet? z.b. nach neustart
-        if os.path.exists(self.__pair+'_balance.csv'):
-            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
-            self.__balance_df = pd.read_csv(self.__pair+'_balance.csv',index_col=0)
-        else:
-            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
-            self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
-            self.__balance_df['Time stamp'] = self.getTime()
-            self.__balance_df[self.__asset2] = self.get_asset2_balance()
-            self.__balance_df[self.__asset1] = self.get_asset1_balance()
-            self.__balance_df['fee'] = self.market_price()
-            self.__balance_df['Market Price'] = self.market_price()
-            self.__balance_df['Order Id'] = '-'
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
+        self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
+        self.__balance_df['Time stamp'] = self.getTime()
+        self.__balance_df[self.__asset2] = self.get_asset2_balance()
+        self.__balance_df[self.__asset1] = self.get_asset1_balance()
+        self.__balance_df['fee'] = self.market_price()
+        self.__balance_df['Market Price'] = self.market_price()
+        self.__balance_df['Order Id'] = '-'
 
-        print(self.__balance_df)
+        print(self.__balance_df.tail())
 
     def buy_order(self):
         self.broker_status = True
@@ -94,6 +89,7 @@ class Broker(object):
             self.asset_check()
 
         self.broker_status = False
+
 
     def sell_order(self):
         self.broker_status = True
@@ -228,7 +224,6 @@ class Broker(object):
             print('Order was not filled and canceled!\n')
         else:
             print('Success: Order was filled!')
-
 
     # schreibt ein CSV raus
     def writeCSV(self,__df):

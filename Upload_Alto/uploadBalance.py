@@ -41,7 +41,7 @@ class uploadBalance(threading.Thread):
         myfile = open(filepath, 'rb')
         fullserverpath=self.serverpath+asset+'.txt'
         session.storbinary('STOR ' + fullserverpath, myfile)
-        file.close()
+        myfile.close()
         session.quit()
 
     def run(self):
