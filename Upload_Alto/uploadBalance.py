@@ -59,21 +59,23 @@ class uploadBalance(threading.Thread):
             #############################
             self.upload_to_ftp(self.asset1)
             self.upload_to_ftp(self.asset2)
-            calcR
-            self.upload_to_ftp(self.rendite)
+
+            self.calcRendite()
+            self.upload_to_ftp('rendite')
             #############################
             print('last upload at: ' + str(datetime.now()))
             time.sleep(self.timeInteval)
             self.iterations += 1
 
     def calcRendite(self):
+        # calculates the rendite and writes a rendite.txt file
         asset1 = np.loadtxt(self.asset1+'.txt')
         if asset1 > 0.001:
             self.rendite = ((asset1 - self.initial)/self.initial * 100)
             self.rendite = int(self.rendite)
-            self.writeTXT(self.rendite,'rendite')
+            self.writeTXT(value=self.rendite,name='rendite')
         else:
-            self.writeTXT(self.rendite_old, 'rendite')
+            self.writeTXT(value=self.rendite_old,name='rendite')
         self.rendite_old = self.rendite
 
     def resume(self):
