@@ -11,7 +11,7 @@ class uploadBalance(threading.Thread):
     '''
     Für den Upload der aktuellen Kurse auf die Website
     '''
-    def __init__(self, asset1, asset2, url=None, serverpath='/AT/', timeInterval=3600, user=None, password=None):
+    def __init__(self, asset1, asset2, initial, url=None, serverpath='/AT/', timeInterval=3600, user=None, password=None):
         threading.Thread.__init__(self)
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
@@ -21,12 +21,18 @@ class uploadBalance(threading.Thread):
 
         self.asset1 = asset1
         self.asset2 = asset2
+        self.rendite = 0
+        self.rendite_old=0
+        self.initial = initial
         #self.filepath=filepath
         self.__user = user
         self.__pw = password
         self.serverpath = serverpath
 
         self.timeInteval = timeInterval
+
+        #write rendite
+
 
     def upload_to_ftp(self,asset):
         # Upload a file to ftp server
@@ -53,10 +59,22 @@ class uploadBalance(threading.Thread):
             #############################
             self.upload_to_ftp(self.asset1)
             self.upload_to_ftp(self.asset2)
+            calcR
+            self.upload_to_ftp(self.rendite)
             #############################
             print('last upload at: ' + str(datetime.now()))
             time.sleep(self.timeInteval)
             self.iterations += 1
+
+    def calcRendite(self):
+        asset1 = np.loadtxt(self.asset1+'.txt')
+        if asset1 > 0.001:
+            self.rendite = ((asset1 - self.initial)/self.initial * 100)
+            self.rendite = int(self.rendite)
+            self.writeTXT(self.rendite,'rendite')
+        else:
+            self.writeTXT(self.rendite_old, 'rendite')
+        self.rendite_old = self.rendite
 
     def resume(self):
         with self.state:
@@ -67,3 +85,9 @@ class uploadBalance(threading.Thread):
         with self.state:
             self.paused = True  # make self block and wait
         print('Stream is currently paused!')
+
+    def writeTXT(self,value,name):
+        __filename = name+'.txt'
+        with open(__filename, "w") as text_file:
+            text_file.write('%s' % value)
+
