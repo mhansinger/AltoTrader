@@ -30,7 +30,7 @@ class Broker(object):
         self.__column_names = []
 
     def initialize(self):
-        # check den asset_status von asset1:
+        # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
         self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
@@ -56,7 +56,7 @@ class Broker(object):
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
-            __volume2 = __current_asset2_funds*0.9999
+            __volume2 = __current_asset2_funds*0.99999
             __ask = self.asset_market_ask()
             __volume1 = __volume2 / __ask
             __vol_str = str(__volume1)
@@ -100,7 +100,7 @@ class Broker(object):
         if self.asset_status is True:
             #######################
             # kraken query
-            __volume = str(__current_asset1_funds*0.9999)
+            __volume = str(__current_asset1_funds*0.99999)
 
             __api_params = {'pair': self.__pair,
                             'type':'sell',
@@ -216,6 +216,7 @@ class Broker(object):
             if __count > 10:
                 __cancel_flag = True
                 break
+            # repeat check after 30 seconds
             time.sleep(30)
 
         if __cancel_flag is True:
@@ -223,7 +224,7 @@ class Broker(object):
             self.__k.query_private('CancelOrder', {'txid': __order_id})
             print('Order was not filled and canceled!\n')
         else:
-            print('Success: Order was filled!')
+            print('Success: Order was filled!\n')
 
     # schreibt ein CSV raus
     def writeCSV(self,__df):

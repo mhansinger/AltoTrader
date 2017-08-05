@@ -13,5 +13,5 @@ XXMR_series = pd.Series(XXMR_raw.V2)
 
 XXMR_backtest = SMAreinvest(XXMR_series)
 
-data, long, short = XXMR_backtest.optimize_SMAcrossover(900,1100,50,400,450,20)
+data, long, short = XXMR_backtest.optimizeSMA(900,1100,50,400,450,20)
 

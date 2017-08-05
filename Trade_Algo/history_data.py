@@ -29,3 +29,24 @@ class history(object):
 
         __rolling_mean = self.time_series.rolling(__window).mean()
         return __rolling_mean
+
+    # for MACD
+    def getMACD(self,__fast,__slow):
+
+        # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
+        self.import_history()
+
+        try:
+            if type(self.time_series) != pd.core.series.Series:
+                raise TypeError
+        except TypeError:
+            print('Zeitreihe muss im Format pd.Series sein!')
+
+        __FAST = self.self.time_series.ewm(span=__fast).mean()
+        __SLOW = self.self.time_series.ewm(span=__slow).mean()
+
+        __MACD = __FAST - __SLOW
+
+        # type should be pandas.Series!
+        return __MACD
+
