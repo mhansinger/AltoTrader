@@ -3,7 +3,7 @@ import pandas as pd
 import copy
 #
 
-class SMAreinvest(object):
+class reinvestBackTest(object):
 
     '''
         This is a simple Backtesting strategy based on Rolling Mean
@@ -351,11 +351,12 @@ class SMAreinvest(object):
         '''
         import matplotlib.pyplot as plt
 
-        plt.figure(1)
-        plt.subplot(211)
-        plt.plot(self.__time_series,linewidth=2.0)
 
         if strat=='SMA':
+            plt.figure(1)
+            plt.subplot(211)
+            plt.plot(self.__time_series, linewidth=2.0)
+
             plt.plot(self.__getRollingMean(shortwin), linewidth=1.5)
             plt.plot(self.__getRollingMean(longwin), linewidth=1.5)
 
@@ -380,11 +381,17 @@ class SMAreinvest(object):
             MACD = self.__getExpMean(shortwin) - self.__getExpMean(longwin)
             signal = MACD.ewm(span=trigger).mean()
 
+            plt.figure(1)
+            plt.subplot(311)
+            plt.plot(self.__time_series, linewidth=2.0)
+            plt.legend(['Time series'])
+
+            plt.subplot(312)
             plt.plot(MACD, linewidth=1.5)
             plt.plot(signal, linewidth=1.5)
-            plt.legend(['Time series','MACD '+str(shortwin)+'/'+str(longwin),'Trigger '+str(trigger)])
+            plt.legend(['MACD '+str(shortwin)+'/'+str(longwin),'Trigger '+str(trigger)])
 
-            plt.subplot(212)
+            plt.subplot(313)
             plt.plot(self.best_data.best_portfolio, linewidth=1.5)
             plt.legend(['Portfolio'])
             plt.title('Time Series')

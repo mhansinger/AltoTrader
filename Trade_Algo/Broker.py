@@ -30,6 +30,8 @@ class Broker(object):
         self.__column_names = []
 
     def initialize(self):
+        # initialisiert den Broker: stellt das dataFrame auf und holt die ersten Werte
+
         # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
@@ -45,6 +47,8 @@ class Broker(object):
         print(self.__balance_df.tail())
 
     def buy_order(self):
+        # executes a buy order
+
         self.broker_status = True
         self.asset_check()
         # check den XBT balance
@@ -92,6 +96,8 @@ class Broker(object):
 
 
     def sell_order(self):
+        # executes a sell order
+
         self.broker_status = True
         __bid = self.asset_market_bid()
         __current_asset1_funds = self.get_asset1_balance()
@@ -99,7 +105,7 @@ class Broker(object):
         # diese if abfrage ist ein double check
         if self.asset_status is True:
             #######################
-            # kraken query
+            # kraken query: what's our stock?
             __volume = str(__current_asset1_funds*0.99999)
 
             __api_params = {'pair': self.__pair,
@@ -206,13 +212,14 @@ class Broker(object):
         __cancel_flag = False
         __open_orders = self.__k.query_private('OpenOrders')['result']['open']
 
-        # check if the order id appears in the closedOrders list
+        # check if the order id appears in the openOrders list
 
         # BOOL Abfrage ob Order ausgeführt wurde
         while bool(__order_id in __open_orders) is True:
             print('Order is still open ... ')
             __open_orders = self.__k.query_private('OpenOrders')['result']['open']
             __count += 1
+            #cancel the order if not filled after 10 checks
             if __count > 10:
                 __cancel_flag = True
                 break
@@ -235,6 +242,7 @@ class Broker(object):
         print(self.__balance_df.tail())
 
     def asset_check(self):
+        # checks the assets on our account and sets the asset_status
         __asset1 = self.get_asset1_balance()
         __asset2 = self.get_asset2_balance()
         # normalize the price
@@ -244,7 +252,7 @@ class Broker(object):
         else:
             self.asset_status = False
 
-    # speichert die aktuellen ETH und BTC Werte der Krake raus, für weiteren Upload
+    # speichert die aktuellen asset1 und asset2 Werte der Krake raus, für weiteren Upload
     def __writeTXT(self,asset1,asset2):
         __asset_balance_1 = asset1
         __asset_balance_2 = asset2
