@@ -185,15 +185,16 @@ class reinvestBackTest(object):
             # compute log returns
             self.__log_return(i)
 
-            if signal[i] > MACD[i]:
+            # falsch herum implementiert
+            if MACD[i] < signal[i]:
                 if self.__position == True:
-                    # our position is short and we want to buy
+                    # we hold a position and don't want to sell: portfolio is increasing
                     self.__updatePortfolio(i)
                 else:
-                    # we hold a position and don't want to sell: portfolio is increasing
+                    # our position is short and we want to buy
                     self.__enterMarket(i)
 
-            elif signal[i] <= MACD[i]:
+            elif MACD[i] >= signal[i]:
                 if self.__position == True:
                     # we should get out of the market and sell:
                     self.__exitMarket(i)

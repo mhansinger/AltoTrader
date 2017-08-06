@@ -8,6 +8,8 @@ __pycache__
 
 *.key
 
-*keys*
+*key*
 
-twitter_keys.py
+credentials*
+
+twitter_keys*

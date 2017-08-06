@@ -12,6 +12,9 @@ import krakenex
 import time
 import os
 
+from Twitter_Bot import twitterEngine
+
+
 class Broker(object):
     def __init__(self,input):
         self.__asset1 = input.asset1
@@ -26,6 +29,11 @@ class Broker(object):
         self.__balance_all = []
         self.__balance_df = []
         self.__lastbuy = []
+        self.twitter=False
+        try:
+            self.twitterEngine = twitterEngine()
+        except:
+            print('No Twitter Module available!')
 
         self.__column_names = []
 
@@ -121,10 +129,18 @@ class Broker(object):
 
             # IMPORTANT: check if order is still open!
             self.check_order(__order_id)
+
             #######################
+            # DAS SOLLTE IN EINE METHODE GEBAUT WERDEN
             # checkt ob niedriger verkauft wird als gekauft
             if self.__lastbuy > __bid:
                 print('Bad Deal!\n SELL < BUY\n')
+            elif self.__lastbuy < __bid:
+                print('GREAT Deal!\n SELL > BUY\n')
+
+            if self.twitter:
+                self.setTweet(self.__lastbuy,__bid)
+            #######################
 
             # update the balance sheet with transaction costs
             __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
@@ -254,12 +270,32 @@ class Broker(object):
 
     # speichert die aktuellen asset1 und asset2 Werte der Krake raus, für weiteren Upload
     def __writeTXT(self,asset1,asset2):
-        __asset_balance_1 = asset1
-        __asset_balance_2 = asset2
+        __asset_balance_1 = round(asset1,3)
+        __asset_balance_2 = round(asset2,3)
         __filename1 = self.__asset1+'.txt'
         __filename2 = self.__asset2+'.txt'
         with open(__filename1, "w") as text_file:
             text_file.write('%s' % __asset_balance_1)
         with open(__filename2, "w") as text_file:
             text_file.write('%s' % __asset_balance_2)
+
+    def setTwitter(self,on=False):
+        try:
+            if type(on) != bool:
+                raise TypeError
+        except TypeError:
+            print('Either True or False!')
+            break
+        self.twitter=on
+
+    def setTweet(self,old,current):
+        # checks for old and current prices and sends twitter msgs
+        # and sends good or bad tweets
+        if old < current:
+            self.twitterEngine.good_tweet()
+        elif old >= current:
+            self.twitterEngine.bad_tweet()
+
+
+
 

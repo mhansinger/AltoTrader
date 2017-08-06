@@ -31,7 +31,7 @@ class Broker_virtual(object):
         self.__column_names = []
 
     def initialize(self):
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', self.__asset1+' price']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, self.__asset1+' shares', 'costs', self.__asset1+' price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns= self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.__invest

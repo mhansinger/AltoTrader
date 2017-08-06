@@ -42,8 +42,8 @@ class history(object):
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
 
-        __FAST = self.self.time_series.ewm(span=__fast).mean()
-        __SLOW = self.self.time_series.ewm(span=__slow).mean()
+        __FAST = self.time_series.ewm(span=__fast).mean()
+        __SLOW = self.time_series.ewm(span=__slow).mean()
 
         __MACD = __FAST - __SLOW
 

@@ -13,7 +13,7 @@ new class to test the run() thread within the the intersection class
 '''
 
 class run_strategy(threading.Thread):
-    def __init__(self, myinput, broker, history, timeInterval):
+    def __init__(self, myinput, broker, history, timeInterval=600):
         threading.Thread.__init__(self)
         self.time_series = []
         self.short_win = myinput.window_short     # sollte noch dynamische werden
@@ -33,6 +33,7 @@ class run_strategy(threading.Thread):
         self.Broker.initialize()
 
     def eval_rollings(self):
+        #computes short and long rolling mean
         __short_mean = self.history.getRollingMean(self.short_win)
         __long_mean = self.history.getRollingMean(self.long_win)
         __last_short = np.array(__short_mean)[-1]
@@ -40,9 +41,11 @@ class run_strategy(threading.Thread):
         return __last_short, __last_long
 
     def eval_MACD(self):
+        # returns MACD and singan/trigger line
         __MACD = self.history.getMACD(self.short_win,self.long_win)
-        __signal = __MACD.ewm(span=self.signalMACD)
-        return __MACD, __signal
+        __signal = __MACD.ewm(span=self.signalMACD).mean()
+        # return only the last entry of the columns as float, these will be intersected
+        return float(__MACD[-1:]), float(__signal[-1:])
 
     def intersectSMA(self):
         # call the evaluation
@@ -99,7 +102,7 @@ class run_strategy(threading.Thread):
             print('Check the name of the data directory: XY_data')
             sys.exit(0)
 
-        if __signal > __MACD:
+        if __MACD > __signal:
             ## das ist quasi das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
             if self.Broker.asset_status is False and self.Broker.broker_status is False:
@@ -115,7 +118,7 @@ class run_strategy(threading.Thread):
                 print('MACD: ', __MACD)
                 print(' ')
 
-        elif __MACD > __signal:
+        elif __MACD < __signal:
             if self.Broker.asset_status is True and self.Broker.broker_status is False:
                 self.Broker.sell_order()
                 print('go short')

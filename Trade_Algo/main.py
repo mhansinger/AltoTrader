@@ -24,7 +24,8 @@ XETH_trade = run_strategy(XETH_input,XETH_broker,XETH_history,timeInterval=600)
 def run_trader(interval=600):
     try:
         XETH_trade.intersect()
-        threading.Timer(interval, run_trader).start()
+        t=threading.Timer(interval, run_trader)
+        t.start()
     except:
         print("Fehler: ", sys.exc_info()[0])
         print('Wird erneut gestartet...\n')
