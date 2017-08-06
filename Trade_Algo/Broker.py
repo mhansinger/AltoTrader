@@ -11,9 +11,7 @@ import pandas as pd
 import krakenex
 import time
 import os
-
-from Twitter_Bot import twitterEngine
-
+import Twitter_Bot.twitterEngine as twitterEngine
 
 class Broker(object):
     def __init__(self,input):

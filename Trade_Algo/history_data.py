@@ -14,7 +14,6 @@ class history(object):
         __raw = pd.read_csv(self.path)
         self.time_series = pd.Series(__raw['Price'])
 
-
     def getRollingMean(self, __window):
         # berechnet den Rolling mean
 
