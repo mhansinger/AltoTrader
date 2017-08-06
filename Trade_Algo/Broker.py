@@ -285,7 +285,7 @@ class Broker(object):
                 raise TypeError
         except TypeError:
             print('Either True or False!')
-            break
+
         self.twitter=on
 
     def setTweet(self,old,current):
