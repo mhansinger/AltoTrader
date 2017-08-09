@@ -17,6 +17,10 @@ bad_tweets = \
      'Money talks… but all mine ever says is good-bye',
      'A stock broker is one who invests other people’s money until its all gone.',
      'Hallo, I bims war schlechter trade vong Geld her',
-     'Trading over the limit.'
+     'Trading over the limit.',
+     'Everything is possible in the coin market, even the contrary.',
+     'I\'d rather gone for a Wirtschaft than economy.',
+     'I should take trading lessons @KokoTrading',
+     'Please feed the kraken!',
 
      ]

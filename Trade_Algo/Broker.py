@@ -3,7 +3,6 @@ This is the Broker class.
 The Broker connects with the Kraken account and does the trades
 
 @author: mhansinger 
-
 '''
 
 import numpy as np
@@ -11,7 +10,7 @@ import pandas as pd
 import krakenex
 import time
 import os
-import Twitter_Bot.twitterEngine as twitterEngine
+from Twitter_Bot.twitterEngine import twitterEngine
 
 class Broker(object):
     def __init__(self,input):
@@ -27,11 +26,11 @@ class Broker(object):
         self.__balance_all = []
         self.__balance_df = []
         self.__lastbuy = []
-        self.twitter=False
+        self.__twitter=False
         try:
             self.twitterEngine = twitterEngine()
         except:
-            print('No Twitter Module available!')
+            print('No Twitter module enabled\n')
 
         self.__column_names = []
 
@@ -136,7 +135,7 @@ class Broker(object):
             elif self.__lastbuy < __bid:
                 print('GREAT Deal!\n SELL > BUY\n')
 
-            if self.twitter:
+            if self.__twitter:
                 self.setTweet(self.__lastbuy,__bid)
             #######################
 
@@ -188,14 +187,12 @@ class Broker(object):
 
     def get_asset2_balance(self):
         # unsere Euros
-        __asset2 = self.__asset2
-        __asset2_funds = self.__k.query_private('Balance')['result'][__asset2]
+        __asset2_funds = self.__k.query_private('Balance')['result'][self.__asset2]
         return float(__asset2_funds)
 
     def get_asset1_balance(self):
         # unsere Ether
-        __asset1=self.__asset1
-        __asset1_funds = self.__k.query_private('Balance')['result'][__asset1]
+        __asset1_funds = self.__k.query_private('Balance')['result'][self.__asset1]
         return float(__asset1_funds)
 
     def update_balance(self,cost,id):
@@ -204,10 +201,8 @@ class Broker(object):
         __new_asset1 = self.get_asset1_balance()
         __new_asset2 = self.get_asset2_balance()
         __market_price = self.market_price()
-        __costs = cost
-        __id = id
 
-        __balance_update_vec = [[__time, __new_asset1, __new_asset2, __costs, __market_price, __id]]
+        __balance_update_vec = [[__time, __new_asset1, __new_asset2, cost, __market_price, id]]
         __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
         self.__balance_df = self.__balance_df.append(__balance_update_df)
 
@@ -220,8 +215,7 @@ class Broker(object):
 
 
     def check_order(self,order_id):
-        print('Order check')
-        __order_id = order_id
+        print('Checking the Order')
         __count = 0
         __cancel_flag = False
         __open_orders = self.__k.query_private('OpenOrders')['result']['open']
@@ -229,7 +223,7 @@ class Broker(object):
         # check if the order id appears in the openOrders list
 
         # BOOL Abfrage ob Order ausgeführt wurde
-        while bool(__order_id in __open_orders) is True:
+        while bool(order_id in __open_orders) is True:
             print('Order is still open ... ')
             __open_orders = self.__k.query_private('OpenOrders')['result']['open']
             __count += 1
@@ -242,7 +236,7 @@ class Broker(object):
 
         if __cancel_flag is True:
             # cancle the order
-            self.__k.query_private('CancelOrder', {'txid': __order_id})
+            self.__k.query_private('CancelOrder', {'txid': order_id})
             print('Order was not filled and canceled!\n')
         else:
             print('Success: Order was filled!\n')
@@ -283,8 +277,11 @@ class Broker(object):
                 raise TypeError
         except TypeError:
             print('Either True or False!')
+        self.__twitter=on
+        print('Twitter is enabled!\n')
 
-        self.twitter=on
+    def getTwitter(self):
+        return self.__twitter
 
     def setTweet(self,old,current):
         # checks for old and current prices and sends twitter msgs
@@ -293,7 +290,3 @@ class Broker(object):
             self.twitterEngine.good_tweet()
         elif old >= current:
             self.twitterEngine.bad_tweet()
-
-
-
-

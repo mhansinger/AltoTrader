@@ -6,6 +6,7 @@ import random as rnd
 # reads in the keys
 
 #from twitter_keys import *
+# im trader ist das alles unter Twitter_Bot abgelegt
 from Twitter_Bot.twitter_keys import *
 
 class twitterEngine(object):
@@ -24,6 +25,7 @@ class twitterEngine(object):
         # sends the tweet!
         this_tweet = good_tweets[n]
         self.api.update_status(this_tweet)
+        print(this_tweet+'\n')
 
     def bad_tweet(self):
 
@@ -34,6 +36,8 @@ class twitterEngine(object):
         # sends the tweet!
         this_tweet = bad_tweets[n]
         self.api.update_status(this_tweet)
+        print(this_tweet+'\n')
+
 
 
 
