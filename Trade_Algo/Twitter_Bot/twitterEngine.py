@@ -17,7 +17,6 @@ class twitterEngine(object):
         self.api = tw.API(self.auth)
 
     def good_tweet(self):
-
         from Twitter_Bot.good_tweets import good_tweets
         length = len(good_tweets)
         # generate random number
@@ -28,7 +27,6 @@ class twitterEngine(object):
         print(this_tweet+'\n')
 
     def bad_tweet(self):
-
         from Twitter_Bot.bad_tweets import bad_tweets
         length = len(bad_tweets)
         # generate random number

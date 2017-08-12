@@ -13,7 +13,7 @@ good_tweets = [
     'The trend is your friend.',
     '@altotrader #traderderwoche',
     '#tradeordie',
-    'the worst thing I can be is the same as everybody else',
+    'The worst thing I can be is the same as everybody else',
     'visualize your success. then go and do it',
     'Failure is not an option, everyone has to succeed',
     'Start wide, expand further and never look back.',

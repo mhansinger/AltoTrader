@@ -16,7 +16,7 @@ class uploadBalance(threading.Thread):
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
-        self.state = threading.Condition()
+        self.state = threading.Condition()s
         self.__URL = url #'http://zeiselmair.de/h4ckamuenster/'
 
         self.asset1 = asset1
