@@ -68,9 +68,21 @@ class reinvestBackTest(object):
         __exp_mean = self.__time_series.ewm(span=__window).mean()
         return __exp_mean
 
+    def __bollUp(self,series,mean,window):
+        delta=series.rolling(window).std()
+        return mean+delta
+
+    def __bollLow(self,series,mean,window):
+        delta=series.rolling(window).std()
+        return mean-delta
+
     def returnRollingStd(self):
         __rol_std = self.__time_series.rolling(self.__window).std()
         return pd.DataFrame(__rol_std, columns=['Rolling Std'])
+
+    def getRollingStd(self,window,series):
+        __std = series.rolling(window).std()
+        return __std
 
     def returnRollingMean(self, window):
         print(window)
@@ -124,6 +136,13 @@ class reinvestBackTest(object):
         if self.__avStrat=='SMA':
             self.__long_mean = self.__getRollingMean(self.__window_long)
             self.__short_mean = self.__getRollingMean(self.__window_short)
+            ######################
+            # bollinger bands:
+            #bollLow = self.__time_series - self.getRollingStd(self.__window_long,self.__time_series)
+            bollUp = self.__bollUp(self.__time_series,self.__long_mean,2000)
+            #print(bollUp)
+            ######################
+
         elif self.__avStrat=='EWM':
             self.__long_mean = self.__getExpMean(self.__window_long)
             self.__short_mean = self.__getExpMean(self.__window_short)
@@ -135,6 +154,10 @@ class reinvestBackTest(object):
         self.__costs = np.zeros(len(self.__time_series))
         self.__shares = np.zeros(len(self.__time_series))
 
+        # emergency exit flag
+        emergencyExit = False
+        lastBuy = 0
+
         for i in range((self.__window_long+1), len(self.__time_series)):        ## hier muss noch was rein, um von beliebigem index zu starten
            # print(i, self.__trades[i])
 
@@ -142,23 +165,52 @@ class reinvestBackTest(object):
             self.__log_return(i)
 
             if self.__short_mean[i] > self.__long_mean[i]:
-                if self.__position == False:
-                    # our position is short and we want to buy
-                    self.__enterMarket(i)
-                else:
-                    # we hold a position and don't want to sell: portfolio is increasing
-                    self.__updatePortfolio(i)
+               if self.__position == False and emergencyExit==False and self.__time_series[i] > bollUp[i]:
+                   # our position is short and we want to buy
+                   self.__enterMarket(i)
+                   lastBuy=self.__time_series[i]
+               elif lastBuy*0.98 > self.__time_series[i] and self.__position==True:
+                   #print('Emergency Exit')
+                   self.__exitMarket(i)
+                   emergencyExit=True      # Notfall exit, stop loss
+               elif self.__position==False:# and emergencyExit:   # zusätzlich benötigt für Notfall exit
+                   self.__downPortfolio(i)
+               elif self.__position==True:
+                   # we hold a position and don't want to sell: portfolio is increasing
+                   self.__updatePortfolio(i)
 
-            elif self.__short_mean[i] <= self.__long_mean[i]:
+            else: #self.__short_mean[i] <= self.__long_mean[i]:
+                emergencyExit=False         # Reset emergency Exit for further trading
                 if self.__position == True:
-                    # we should get out of the market and sell:
-                    self.__exitMarket(i)
+                   # we should get out of the market and sell:
+                   self.__exitMarket(i)
                 else:
-                    self.__downPortfolio(i)
+                   self.__downPortfolio(i)
 
             if self.__portfolio[i] < 0.0:
-               print('Skip loop, negative portfolio')
-               break
+                print('Skip loop, negative portfolio')
+                break
+
+
+            # neue Implementierung
+        '''
+         if self.__position == False:    # wir sind short
+             if self.__short_mean[i] > self.__long_mean[i]:# and self.__time_series[i] > bollUp[i]:
+                 self.__enterMarket(i)   # kaufen
+                 lastBuy=self.__time_series[i]
+             else:
+                 self.__downPortfolio(i) # weiterhin short bleiben
+         elif self.__position==True:     # wir sind long
+             if self.__short_mean[i] <= self.__long_mean[i]:
+                 self.__exitMarket(i)    #verkaufen
+             elif lastBuy*0.97 > self.__time_series[i]:   # steigt aus, wenn kurs zu stark fällt
+                 self.__exitMarket(i)
+                 emergencyExit=True
+             else:
+                 self.__updatePortfolio(i)   # weiter long bleiben
+     '''
+
+
 
         print("nach SMA: ", self.__portfolio[-1])
 
@@ -352,7 +404,6 @@ class reinvestBackTest(object):
         '''
         import matplotlib.pyplot as plt
 
-
         if strat=='SMA':
             plt.figure(1)
             plt.subplot(211)
@@ -360,8 +411,10 @@ class reinvestBackTest(object):
 
             plt.plot(self.__getRollingMean(shortwin), linewidth=1.5)
             plt.plot(self.__getRollingMean(longwin), linewidth=1.5)
+            plt.plot(self.__bollUp(self.__time_series,self.__getRollingMean(longwin),longwin), linewidth=1.5)
+            plt.plot(self.__bollLow(self.__time_series, self.__getRollingMean(longwin), longwin), linewidth=1.5)
 
-            plt.legend(['Time series', 'short window', 'long window'])
+            plt.legend(['Time series', 'short window', 'long window','Bollinger Up','Bollinger Low'])
 
             plt.subplot(212)
             plt.plot(self.best_data.best_portfolio, linewidth=1.5)

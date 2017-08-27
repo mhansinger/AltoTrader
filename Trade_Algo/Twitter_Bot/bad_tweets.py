@@ -22,5 +22,9 @@ bad_tweets = \
      'I\'d rather gone for a Wirtschaft than economy.',
      'I should take trading lessons @KokoTrading',
      'Please feed the kraken!',
+     'ಠ_ಠ',
+     '¯\_(ツ)_/¯',
+     '(⊙_☉)',
+     'o(╥﹏╥)o',
 
      ]

@@ -25,7 +25,7 @@ class Broker(object):
         self.__asset2_funds = []
         self.__balance_all = []
         self.__balance_df = []
-        self.__lastbuy = []
+        self.lastbuy = []
         self.__twitter=False
         try:
             self.twitterEngine = twitterEngine()
@@ -40,12 +40,12 @@ class Broker(object):
         # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'fee', 'Market Price', 'Order Id']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
         self.__balance_df[self.__asset1] = self.get_asset1_balance()
-        self.__balance_df['fee'] = self.market_price()
+        self.__balance_df['Buy/Sell'] = '-'
         self.__balance_df['Market Price'] = self.market_price()
         self.__balance_df['Order Id'] = '-'
 
@@ -68,7 +68,7 @@ class Broker(object):
             __volume2 = __current_asset2_funds*0.99999
             __ask = self.asset_market_ask()
             __volume1 = __volume2 / __ask
-            __vol_str = str(__volume1)
+            __vol_str = str(round(__volume1,5))
 
             __api_params = {'pair': self.__pair,
                             'type':'buy',
@@ -88,11 +88,14 @@ class Broker(object):
             #######################
 
             # store the last buy price, to compare with sell price
-            self.__lastbuy = __ask
+            #self.lastbuy = __ask
+            # noch checken
+            lastbuy = self.__k.query_private('TradesHistory')['result']['trades'][__order_id]['price']
+            self.lastbuy = float(lastbuy)
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            self.update_balance(__costs,__order_id)
+            #__costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            self.update_balance(lastbuy,__order_id)
 
             # change the asset status !
             self.asset_check()
@@ -111,7 +114,7 @@ class Broker(object):
         if self.asset_status is True:
             #######################
             # kraken query: what's our stock?
-            __volume = str(__current_asset1_funds*0.99999)
+            __volume = str(round((__current_asset1_funds*0.99999),5))
 
             __api_params = {'pair': self.__pair,
                             'type':'sell',
@@ -130,18 +133,19 @@ class Broker(object):
             #######################
             # DAS SOLLTE IN EINE METHODE GEBAUT WERDEN
             # checkt ob niedriger verkauft wird als gekauft
-            if self.__lastbuy > __bid:
+            if self.lastbuy > __bid:
                 print('Bad Deal!\n SELL < BUY\n')
-            elif self.__lastbuy < __bid:
+            elif self.lastbuy < __bid:
                 print('GREAT Deal!\n SELL > BUY\n')
 
             if self.__twitter:
-                self.setTweet(self.__lastbuy,__bid)
+                self.setTweet(self.lastbuy,__bid)
             #######################
 
             # update the balance sheet with transaction costs
-            __costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            self.update_balance(__costs,__order_id)
+            price = self.__k.query_private('TradesHistory')['result']['trades'][__order_id]['price']
+            #self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
+            self.update_balance(price,__order_id)
 
             # change the asset status !
             self.asset_check()
@@ -195,14 +199,14 @@ class Broker(object):
         __asset1_funds = self.__k.query_private('Balance')['result'][self.__asset1]
         return float(__asset1_funds)
 
-    def update_balance(self,cost,id):
+    def update_balance(self,price,id):
         # update time
         __time = self.getTime()
         __new_asset1 = self.get_asset1_balance()
         __new_asset2 = self.get_asset2_balance()
         __market_price = self.market_price()
 
-        __balance_update_vec = [[__time, __new_asset1, __new_asset2, cost, __market_price, id]]
+        __balance_update_vec = [[__time, __new_asset1, __new_asset2, price, __market_price, id]]
         __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
         self.__balance_df = self.__balance_df.append(__balance_update_df)
 

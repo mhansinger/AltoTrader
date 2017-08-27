@@ -12,7 +12,7 @@ import sys
 new class to test the run() thread within the the intersection class
 '''
 
-class run_strategy(threading.Thread):
+class strategy_new(threading.Thread):
     def __init__(self, myinput, broker, history, timeInterval=600):
         threading.Thread.__init__(self)
         self.time_series = []

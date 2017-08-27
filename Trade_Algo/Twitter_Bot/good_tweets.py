@@ -23,6 +23,8 @@ good_tweets = [
     'Trust yourself and break the rules! @Schwarzenegger',
     'Let\'s make Wall Street great again!',
     'To the moon!',
-    'I\'ve always wanted to be a champion.'
+    'I\'ve always wanted to be a champion.',
+    '[̲̅$̲̅(̲̅ ͡° ͜ʖ ͡°̲̅)̲̅$̲̅]',
+
 
     ]
