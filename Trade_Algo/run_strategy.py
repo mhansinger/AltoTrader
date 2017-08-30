@@ -34,18 +34,18 @@ class run_strategy(threading.Thread):
 
     def eval_rollings(self):
         #computes short and long rolling mean
-        __short_mean = self.history.getRollingMean(self.short_win)
-        __long_mean = self.history.getRollingMean(self.long_win)
-        __last_short = np.array(__short_mean)[-1]
-        __last_long = np.array(__long_mean)[-1]
-        return __last_short, __last_long
+        short_mean = self.history.getRollingMean(self.short_win)
+        long_mean = self.history.getRollingMean(self.long_win)
+        last_short = np.array(short_mean)[-1]
+        last_long = np.array(long_mean)[-1]
+        return last_short, last_long
 
     def eval_MACD(self):
         # returns MACD and singan/trigger line
-        __MACD = self.history.getMACD(self.short_win,self.long_win)
-        __signal = __MACD.ewm(span=self.signalMACD).mean()
+        MACD = self.history.getMACD(self.short_win,self.long_win)
+        signal = MACD.ewm(span=self.signalMACD).mean()
         # return only the last entry of the columns as float, these will be intersected
-        return float(__MACD[-1:]), float(__signal[-1:])
+        return float(MACD[-1:]), float(signal[-1:])
 
     def intersectSMA(self):
         # call the evaluation

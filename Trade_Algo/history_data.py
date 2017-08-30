@@ -11,9 +11,10 @@ class history(object):
 
     def import_history(self):
         # liest die Zeitreihe ein, z.B. XETH_   Series.csv mit einer column: Price
-        __raw = pd.read_csv(self.path)
-        self.time_series = pd.Series(__raw['Price'])
+        raw = pd.read_csv(self.path)
+        self.time_series = pd.Series(raw['Price'])
 
+    # computes the SMA
     def getRollingMean(self, __window):
         # berechnet den Rolling mean
 
@@ -28,6 +29,14 @@ class history(object):
 
         __rolling_mean = self.time_series.rolling(__window).mean()
         return __rolling_mean
+
+    # upper Bollinger Band
+    def getBollUp(self, sma, window):
+        # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
+        self.import_history()
+        delta= self.time_series.rolling(window).std()
+        boll=sma+delta
+        return boll[-1]
 
     # for MACD
     def getMACD(self,__fast,__slow):

@@ -25,7 +25,8 @@ class Broker(object):
         self.__asset2_funds = []
         self.__balance_all = []
         self.__balance_df = []
-        self.lastbuy = []
+        self.lastbuy = 0
+        self.orderid=[]
         self.__twitter=False
         try:
             self.twitterEngine = twitterEngine()
@@ -57,7 +58,7 @@ class Broker(object):
         self.broker_status = True
         self.asset_check()
         # check den XBT balance
-        __current_asset2_funds = self.get_asset2_balance()
+        current_asset2_funds = self.get_asset2_balance()
 
         # diese if abfrage ist ein double check
         if self.asset_status is False:
@@ -65,39 +66,45 @@ class Broker(object):
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
-            __volume2 = __current_asset2_funds*0.99999
-            __ask = self.asset_market_ask()
-            __volume1 = __volume2 / __ask
-            __vol_str = str(round(__volume1,5))
+            volume2 = current_asset2_funds*0.99999
+            ask = self.asset_market_ask()
+            volume1 = volume2 / ask
+            vol_str = str(round(volume1,5))     #round -> kraken requirement
+            ask_str = str(ask)
 
-            __api_params = {'pair': self.__pair,
+            # limit order in test phase
+            api_params = {'pair': self.__pair,
                             'type':'buy',
-                            'ordertype':'market',
-                            #'price': __market_str,
-                            'volume':__vol_str,
+                            'ordertype':'limit',    #'market',
+                            'price': ask_str,
+                            'volume': vol_str,
                             'trading_agreement':'agree'}
-            __order = self.__k.query_private('AddOrder',__api_params)
+            # order wird rausgeschickt!
+            self.order = self.__k.query_private('AddOrder',api_params)
 
             try:
-                __order_id = __order['result']['txid'][0]
+                order_id = order['result']['txid'][0]
+                #######################
+                # IMPORTANT: check if order is still open!
+                isfilled = self.check_order(self.order_id)
+                #######################
             except KeyError:
+                isfilled=False
                 print('Probably not enough funding...')
 
-            # IMPORTANT: check if order is still open!
-            self.check_order(__order_id)
-            #######################
 
-            # store the last buy price, to compare with sell price
-            #self.lastbuy = __ask
-            # noch checken
-            lastbuy = self.__k.query_private('TradesHistory')['result']['trades'][__order_id]['price']
-            self.lastbuy = float(lastbuy)
+            if isfilled:
+                # store the last buy price, to compare with sell price
+                # noch checken
+                lastbuy = self.__k.query_private('TradesHistory')['result']['trades'][self.order_id]['price']
+                self.lastbuy = float(lastbuy)
 
-            # update the balance sheet with transaction costs
-            #__costs = self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            self.update_balance(lastbuy,__order_id)
+                # update the balance sheet with buy/sell price
+                self.update_balance(lastbuy,self.order_id)
+            else:
+                self.update_balance('-', '-')
 
-            # change the asset status !
+            # change the asset status ! redundant
             self.asset_check()
 
         self.broker_status = False
@@ -107,50 +114,60 @@ class Broker(object):
         # executes a sell order
 
         self.broker_status = True
-        __bid = self.asset_market_bid()
-        __current_asset1_funds = self.get_asset1_balance()
+        bid = str(self.asset_market_bid())
+        current_asset1_funds = self.get_asset1_balance()
         self.asset_check()
         # diese if abfrage ist ein double check
         if self.asset_status is True:
             #######################
             # kraken query: what's our stock?
-            __volume = str(round((__current_asset1_funds*0.99999),5))
+            volume = str(round((current_asset1_funds*0.99999),5))
 
-            __api_params = {'pair': self.__pair,
+            api_params = {'pair': self.__pair,
                             'type':'sell',
-                            'ordertype':'market',
-                            'volume': __volume,
+                            'ordertype':'limit', #'market',
+                            'price': bid,
+                            'volume': volume,
                             'trading_agreement': 'agree'}
-            __order = self.__k.query_private('AddOrder', __api_params)
+            # order wird rausgeschickt!
+            order = self.__k.query_private('AddOrder', api_params)
+
             try:
-                __order_id = __order['result']['txid'][0]
+                self.order_id = order['result']['txid'][0]
+                #######################s
+                # IMPORTANT: check if order is still open!
+                isfilled = self.check_order(self.order_id)
+                #######################
             except KeyError:
+                isfilled=False
                 print('Probably not enough funding...')
 
-            # IMPORTANT: check if order is still open!
-            self.check_order(__order_id)
+            if isfilled:
+                # update the balance sheet with transaction costs
+                trades = self.__k.query_private('TradesHistory')['result']['trades']
+                price = float(trades[self.order_id]['price'])
+                self.update_balance(price, self.order_id)
 
-            #######################
-            # DAS SOLLTE IN EINE METHODE GEBAUT WERDEN
-            # checkt ob niedriger verkauft wird als gekauft
-            if self.lastbuy > __bid:
-                print('Bad Deal!\n SELL < BUY\n')
-            elif self.lastbuy < __bid:
-                print('GREAT Deal!\n SELL > BUY\n')
+                #######################
+                # DAS SOLLTE IN EINE METHODE GEBAUT WERDEN
+                # checkt ob niedriger verkauft wird als gekauft
+                if self.lastbuy > price:
+                    print('Bad Deal!\n SELL < BUY\n')
+                elif self.lastbuy < price:
+                    print('GREAT Deal!\n SELL > BUY\n')
 
-            if self.__twitter:
-                self.setTweet(self.lastbuy,__bid)
-            #######################
+                # twitters, if enabled: setTwitter(True)
+                if self.__twitter:
+                    self.setTweet(self.lastbuy,price)
+                #######################
+            else:
+                self.update_balance('-', '-')
 
-            # update the balance sheet with transaction costs
-            price = self.__k.query_private('TradesHistory')['result']['trades'][__order_id]['price']
-            #self.__k.query_private('ClosedOrders')['result']['closed'][__order_id]['cost']
-            self.update_balance(price,__order_id)
-
-            # change the asset status !
+            # change the asset status!
             self.asset_check()
 
         self.broker_status = False
+
 
     def idle(self):
         self.broker_status = True
@@ -160,7 +177,7 @@ class Broker(object):
             print('Broker muss noch initialisiert werden!\n')
         #
         # update the balance sheet
-        self.update_balance(0,'-')
+        self.update_balance('-','-')
 
         self.broker_status = False
 
@@ -178,102 +195,108 @@ class Broker(object):
         print(balance)
 
     def asset_market_bid(self):
-        __market_bid = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['b']
-        return float(__market_bid[0])
+        market_bid = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['b']
+        return round(float(market_bid[0]), 5)
 
     def asset_market_ask(self):
-        __market_ask = self.__k.query_public('Ticker',{'pair': self.__pair})['result'][self.__pair]['a']
-        return float(__market_ask[0])
+        market_ask = self.__k.query_public('Ticker',{'pair': self.__pair})['result'][self.__pair]['a']
+        return round(float(market_ask[0]), 5)
 
     def market_price(self):
-        __market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
-        return float(__market[0])
+        market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
+        return round(float(market[0]), 5)
 
     def get_asset2_balance(self):
-        # unsere Euros
-        __asset2_funds = self.__k.query_private('Balance')['result'][self.__asset2]
-        return float(__asset2_funds)
+        # unsere XBT
+        asset2_funds = self.__k.query_private('Balance')['result'][self.__asset2]
+        return round(float(asset2_funds), 5)
 
     def get_asset1_balance(self):
-        # unsere Ether
-        __asset1_funds = self.__k.query_private('Balance')['result'][self.__asset1]
-        return float(__asset1_funds)
+        # unsere ETH
+        asset1_funds = self.__k.query_private('Balance')['result'][self.__asset1]
+        return round(float(asset1_funds), 5)
 
-    def update_balance(self,price,id):
+    def update_balance(self, price, id):
         # update time
-        __time = self.getTime()
-        __new_asset1 = self.get_asset1_balance()
-        __new_asset2 = self.get_asset2_balance()
-        __market_price = self.market_price()
+        time = self.getTime()
+        new_asset1 = self.get_asset1_balance()
+        new_asset2 = self.get_asset2_balance()
+        market_price = self.market_price()
 
-        __balance_update_vec = [[__time, __new_asset1, __new_asset2, price, __market_price, id]]
-        __balance_update_df = pd.DataFrame(__balance_update_vec, columns=self.__column_names)
-        self.__balance_df = self.__balance_df.append(__balance_update_df)
+        balance_update_vec = [[time, new_asset1, new_asset2, price, market_price, id]]
+        balance_update_df = pd.DataFrame(balance_update_vec, columns=self.__column_names)
+        self.__balance_df = self.__balance_df.append(balance_update_df)
 
         # write as csv file
         self.writeCSV(self.__balance_df)
-        print(__balance_update_df)
+        print(balance_update_df)
 
         # schreibt die beiden .txt für den online upload
-        self.__writeTXT(__new_asset1, __new_asset2)
+        self.__writeTXT(new_asset1, new_asset2)
 
 
     def check_order(self,order_id):
+        #IMPORTANT: checks if your order was filled after some time! If not -> cancel
         print('Checking the Order')
-        __count = 0
-        __cancel_flag = False
-        __open_orders = self.__k.query_private('OpenOrders')['result']['open']
+        count = 0
+        cancel_flag = False
+        open_orders = self.__k.query_private('OpenOrders')['result']['open']
 
-        # check if the order id appears in the openOrders list
+        # check if the order id appears in the OpenOrders list
 
-        # BOOL Abfrage ob Order ausgeführt wurde
-        while bool(order_id in __open_orders) is True:
+        # BOOLEAN check
+        while bool(order_id in open_orders) is True:
             print('Order is still open ... ')
-            __open_orders = self.__k.query_private('OpenOrders')['result']['open']
-            __count += 1
+            open_orders = self.__k.query_private('OpenOrders')['result']['open']
+            count += 1
             #cancel the order if not filled after 10 checks
-            if __count > 10:
-                __cancel_flag = True
+            if count > 10:
+                cancel_flag = True
                 break
             # repeat check after 30 seconds
             time.sleep(30)
 
-        if __cancel_flag is True:
+        if cancel_flag is True:
             # cancle the order
             self.__k.query_private('CancelOrder', {'txid': order_id})
             print('Order was not filled and canceled!\n')
+            isfilled=False
         else:
             print('Success: Order was filled!\n')
+            isfilled=True
+
+        return isfilled
+
 
     # schreibt ein CSV raus
-    def writeCSV(self,__df):
-        __filename = self.__pair+'_balance.csv'
-        pd.DataFrame.to_csv(__df,__filename)
+    def writeCSV(self,df):
+        filename = self.__pair+'_balance.csv'
+        pd.DataFrame.to_csv(df,filename)
 
     def our_balance(self):
         print(self.__balance_df.tail())
 
     def asset_check(self):
         # checks the assets on our account and sets the asset_status
-        __asset1 = self.get_asset1_balance()
-        __asset2 = self.get_asset2_balance()
+        asset1 = self.get_asset1_balance()
+        asset2 = self.get_asset2_balance()
         # normalize the price
-        __asset2 = __asset2/self.market_price()
-        if __asset1 > __asset2:
+        asset2 = asset2/self.market_price()
+        if asset1 > asset2:
             self.asset_status = True
         else:
             self.asset_status = False
 
     # speichert die aktuellen asset1 und asset2 Werte der Krake raus, für weiteren Upload
     def __writeTXT(self,asset1,asset2):
-        __asset_balance_1 = round(asset1,3)
-        __asset_balance_2 = round(asset2,3)
-        __filename1 = self.__asset1+'.txt'
-        __filename2 = self.__asset2+'.txt'
-        with open(__filename1, "w") as text_file:
-            text_file.write('%s' % __asset_balance_1)
-        with open(__filename2, "w") as text_file:
-            text_file.write('%s' % __asset_balance_2)
+        asset_balance_1 = round(asset1,3)
+        asset_balance_2 = round(asset2,3)
+        filename1 = self.__asset1+'.txt'
+        filename2 = self.__asset2+'.txt'
+        with open(filename1, "w") as text_file:
+            text_file.write('%s' % asset_balance_1)
+        with open(filename2, "w") as text_file:
+            text_file.write('%s' % asset_balance_2)
 
     def setTwitter(self,on=False):
         try:

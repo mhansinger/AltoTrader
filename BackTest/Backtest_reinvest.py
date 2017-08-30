@@ -139,7 +139,7 @@ class reinvestBackTest(object):
             ######################
             # bollinger bands:
             #bollLow = self.__time_series - self.getRollingStd(self.__window_long,self.__time_series)
-            bollUp = self.__bollUp(self.__time_series,self.__long_mean,2000)
+            bollUp = self.__bollUp(self.__time_series,self.__long_mean,2*self.__window_long)
             #print(bollUp)
             ######################
 
@@ -165,23 +165,23 @@ class reinvestBackTest(object):
             self.__log_return(i)
 
             if self.__short_mean[i] > self.__long_mean[i]:
-               if self.__position == False and emergencyExit==False and self.__time_series[i] > bollUp[i]:
+               if self.__position is False and emergencyExit is False and self.__time_series[i] > bollUp[i]:
                    # our position is short and we want to buy
                    self.__enterMarket(i)
                    lastBuy=self.__time_series[i]
-               elif lastBuy*0.98 > self.__time_series[i] and self.__position==True:
+               elif lastBuy*0.975 > self.__time_series[i] and self.__position is True:
                    #print('Emergency Exit')
                    self.__exitMarket(i)
                    emergencyExit=True      # Notfall exit, stop loss
-               elif self.__position==False:# and emergencyExit:   # zusätzlich benötigt für Notfall exit
+               elif self.__position is False:# and emergencyExit:   # zusätzlich benötigt für Notfall exit
                    self.__downPortfolio(i)
-               elif self.__position==True:
+               elif self.__position is True:
                    # we hold a position and don't want to sell: portfolio is increasing
                    self.__updatePortfolio(i)
 
             else: #self.__short_mean[i] <= self.__long_mean[i]:
                 emergencyExit=False         # Reset emergency Exit for further trading
-                if self.__position == True:
+                if self.__position is True:
                    # we should get out of the market and sell:
                    self.__exitMarket(i)
                 else:
@@ -209,7 +209,6 @@ class reinvestBackTest(object):
              else:
                  self.__updatePortfolio(i)   # weiter long bleiben
      '''
-
 
 
         print("nach SMA: ", self.__portfolio[-1])

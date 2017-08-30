@@ -21,8 +21,9 @@ class twitterEngine(object):
         length = len(good_tweets)
         # generate random number
         n = rnd.randrange(0, length - 1)
-        # sends the tweet!
+        # choose a tweet
         this_tweet = good_tweets[n]
+        # sends the tweet!
         self.api.update_status(this_tweet)
         print(this_tweet+'\n')
 
@@ -31,8 +32,9 @@ class twitterEngine(object):
         length = len(bad_tweets)
         # generate random number
         n = rnd.randrange(0, length - 1)
-        # sends the tweet!
+        # choose a tweet
         this_tweet = bad_tweets[n]
+        # sends the tweet!
         self.api.update_status(this_tweet)
         print(this_tweet+'\n')
 
