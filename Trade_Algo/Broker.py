@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import krakenex
 import time
-import os
+import os.path
+
 from Twitter_Bot.twitterEngine import twitterEngine
 
 class Broker(object):
@@ -41,8 +42,17 @@ class Broker(object):
         # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
-        self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
+        # checken, ob bereits an balance.csv existiert, sonst wird es neu angelegt
+        if (os.path.exists(self.__pair+'_balance.csv')):
+            old_df = pd.read_csv(self.__pair+'_balance.csv')
+            old_df = old_df.drop('Unnamed: 0',1)
+            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
+            self.__balance_df = old_df
+        else:
+            self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
+            self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
+
+        # das wir in beiden Fällen aktualisiert
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.get_asset2_balance()
         self.__balance_df[self.__asset1] = self.get_asset1_balance()
@@ -96,11 +106,11 @@ class Broker(object):
             if isfilled:
                 # store the last buy price, to compare with sell price
                 # noch checken
-                lastbuy = self.__k.query_private('TradesHistory')['result']['trades'][self.order_id]['price']
-                self.lastbuy = float(lastbuy)
+                trades = self.__k.query_private('TradesHistory')['result']['trades']
+                self.lastbuy = float(trades[self.order_id]['price'])
 
                 # update the balance sheet with buy/sell price
-                self.update_balance(lastbuy,self.order_id)
+                self.update_balance(self.lastbuy,self.order_id)
             else:
                 self.update_balance('-', '-')
 

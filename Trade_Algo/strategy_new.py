@@ -27,11 +27,12 @@ class strategy_new(threading.Thread):
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
         self.state = threading.Condition()
-        self.timeInteval = timeInterval
+        #self.timeInteval = timeInterval
 
         # IMPORTANT: Broker muss initialisiert werden!
         self.Broker.initialize()
         self.emergencyExit = False
+        self.exitFactor = 0.972
 
     def eval_rollings(self):
         #computes short and long rolling mean
@@ -78,7 +79,7 @@ class strategy_new(threading.Thread):
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
-            elif lastbuy*0.972 > marketP and self.Broker.asset_status:
+            elif lastbuy*self.exitFactor > marketP and self.Broker.asset_status:
                 # this is an emergency function to leave the market if price drops; check about 98%
                 self.emergencyExit = True
                 self.Broker.sell_order()
@@ -160,6 +161,10 @@ class strategy_new(threading.Thread):
             print('signal: ', signal)
             print('MACD: ', MACD)
             print(' ')
+
+
+    def setExitFactor(self,fac):
+        self.exitFactor=fac
 
 '''
     # *************************************************

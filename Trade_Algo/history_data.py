@@ -22,7 +22,7 @@ class history(object):
         self.import_history()
 
         try:
-            if type(self.time_series) != pd.core.series.Series:
+            if type(self.time_series) != pd.core.series.Series:r
                 raise TypeError
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
@@ -36,7 +36,7 @@ class history(object):
         self.import_history()
         delta= self.time_series.rolling(window).std()
         boll=sma+delta
-        return boll[-1]
+        return float(boll[-1:])
 
     # for MACD
     def getMACD(self,__fast,__slow):
