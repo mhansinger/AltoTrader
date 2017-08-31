@@ -44,6 +44,7 @@ class Broker(object):
 
         # checken, ob bereits an balance.csv existiert, sonst wird es neu angelegt
         if (os.path.exists(self.__pair+'_balance.csv')):
+            print(self.__pair+'_balance.csv exists \n')
             old_df = pd.read_csv(self.__pair+'_balance.csv')
             old_df = old_df.drop('Unnamed: 0',1)
             self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
@@ -51,14 +52,12 @@ class Broker(object):
         else:
             self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
             self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
-
-        # das wir in beiden Fällen aktualisiert
-        self.__balance_df['Time stamp'] = self.getTime()
-        self.__balance_df[self.__asset2] = self.get_asset2_balance()
-        self.__balance_df[self.__asset1] = self.get_asset1_balance()
-        self.__balance_df['Buy/Sell'] = '-'
-        self.__balance_df['Market Price'] = self.market_price()
-        self.__balance_df['Order Id'] = '-'
+            self.__balance_df['Time stamp'] = self.getTime()
+            self.__balance_df[self.__asset2] = self.get_asset2_balance()
+            self.__balance_df[self.__asset1] = self.get_asset1_balance()
+            self.__balance_df['Buy/Sell'] = '-'
+            self.__balance_df['Market Price'] = self.market_price()
+            self.__balance_df['Order Id'] = '-'
 
         print(self.__balance_df.tail())
 
@@ -103,11 +102,11 @@ class Broker(object):
                 print('Probably not enough funding...')
 
 
-            if isfilled:
+            if isfilled is True:
                 # store the last buy price, to compare with sell price
                 # noch checken
-                trades = self.__k.query_private('TradesHistory')['result']['trades']
-                self.lastbuy = float(trades[self.order_id]['price'])
+                closed = self.__k.query_private('ClosedOrders')['result']['closed']
+                self.lastbuy = float(closed[self.order_id]['price'])
 
                 # update the balance sheet with buy/sell price
                 self.update_balance(self.lastbuy,self.order_id)
@@ -152,10 +151,10 @@ class Broker(object):
                 isfilled=False
                 print('Probably not enough funding...')
 
-            if isfilled:
+            if isfilled is True:
                 # update the balance sheet with transaction costs
-                trades = self.__k.query_private('TradesHistory')['result']['trades']
-                price = float(trades[self.order_id]['price'])
+                closed = self.__k.query_private('ClosedOrders')['result']['closed']
+                price = float(closed[self.order_id]['price'])
                 self.update_balance(price, self.order_id)
 
                 #######################

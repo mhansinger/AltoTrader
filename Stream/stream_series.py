@@ -9,7 +9,7 @@ import time
 current_time = time.strftime("%m.%d.%y_%H:%M", time.localtime())
 
 class stream_series(threading.Thread):
-    def __init__(self, asset1, asset2, timeInterval=600):
+    def __init__(self, asset1, asset2, timeInterval=300):
         threading.Thread.__init__(self)
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running

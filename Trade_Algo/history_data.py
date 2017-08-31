@@ -22,7 +22,7 @@ class history(object):
         self.import_history()
 
         try:
-            if type(self.time_series) != pd.core.series.Series:r
+            if type(self.time_series) != pd.core.series.Series:
                 raise TypeError
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
