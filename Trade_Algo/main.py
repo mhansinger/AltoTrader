@@ -10,7 +10,7 @@ from datetime import datetime
 
 # set the input data with default values
 # adjust the windows to our time series!!!
-XETH_input = set_input(asset1='XETH', asset2='XXBT', long=1000, short=470, fee=0.0016, reinvest=0.0, investment=1000.0);XETH_history = history(XETH_input);XETH_broker = Broker(XETH_input)
+XETH_input = set_input(asset1='XETH', asset2='XXBT', long=100, short=47);XETH_history = history(XETH_input);XETH_broker = Broker(XETH_input)
 
 
 # initialize the trading history:  it will read the ETH stream from ftp
@@ -29,5 +29,8 @@ def run_trader(interval=600):
         print("Fehler: ", sys.exc_info()[0])
         print('Wird erneut gestartet...\n')
         run_trader()
+        
+# this starts the trading engine!
+run_trader()
 
 
