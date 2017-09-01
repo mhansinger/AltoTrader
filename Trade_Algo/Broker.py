@@ -27,7 +27,7 @@ class Broker(object):
         self.__balance_all = []
         self.__balance_df = []
         self.lastbuy = 0
-        self.orderid=[]
+        self.order_id_sell = self.order_id_buy = []
         self.__twitter=False
         try:
             self.twitterEngine = twitterEngine()
@@ -42,7 +42,7 @@ class Broker(object):
         # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
-        # checken, ob bereits an balance.csv existiert, sonst wird es neu angelegt
+        # checken, ob bereits an XY_balance.csv existiert, sonst wird es neu angelegt
         if (os.path.exists(self.__pair+'_balance.csv')):
             print(self.__pair+'_balance.csv exists \n')
             old_df = pd.read_csv(self.__pair+'_balance.csv')
@@ -92,10 +92,13 @@ class Broker(object):
             self.order = self.__k.query_private('AddOrder',api_params)
 
             try:
-                order_id = order['result']['txid'][0]
+                self.order_id_buy = order['result']['txid'][0]
+                print(self.order_id_buy)
                 #######################
                 # IMPORTANT: check if order is still open!
-                isfilled = self.check_order(self.order_id)
+                isfilled = self.check_order(self.order_id_buy)
+                print(isfilled)
+                print(self.order_id_buy)
                 #######################
             except KeyError:
                 isfilled=False
@@ -106,10 +109,10 @@ class Broker(object):
                 # store the last buy price, to compare with sell price
                 # noch checken
                 closed = self.__k.query_private('ClosedOrders')['result']['closed']
-                self.lastbuy = float(closed[self.order_id]['price'])
+                self.lastbuy = float(closed[self.order_id_buy]['price'])
 
                 # update the balance sheet with buy/sell price
-                self.update_balance(self.lastbuy,self.order_id)
+                self.update_balance(self.lastbuy,self.order_id_buy)
             else:
                 self.update_balance('-', '-')
 
@@ -142,20 +145,25 @@ class Broker(object):
             order = self.__k.query_private('AddOrder', api_params)
 
             try:
-                self.order_id = order['result']['txid'][0]
+                self.order_id_sell = order['result']['txid'][0]
+                # check
+                print(self.order_id_sell)
                 #######################s
                 # IMPORTANT: check if order is still open!
-                isfilled = self.check_order(self.order_id)
+                isfilled = self.check_order(self.order_id_sell)
+                # check
+                print(isfilled)
+                print(self.order_id_sell)
                 #######################
             except KeyError:
-                isfilled=False
+                isfilled = False
                 print('Probably not enough funding...')
 
             if isfilled is True:
                 # update the balance sheet with transaction costs
                 closed = self.__k.query_private('ClosedOrders')['result']['closed']
-                price = float(closed[self.order_id]['price'])
-                self.update_balance(price, self.order_id)
+                price = float(closed[self.order_id_sell]['price'])
+                self.update_balance(price, self.order_id_sell)
 
                 #######################
                 # DAS SOLLTE IN EINE METHODE GEBAUT WERDEN

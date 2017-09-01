@@ -63,10 +63,6 @@ class strategy_new(threading.Thread):
         marketP = self.Broker.asset_market_ask()
         lastBoll = self.history.getBollUp(long_sma,self.long_win*2)
 
-        ###################
-        # IMPLEMENT BOLLINGER IN HISTORY
-        ###################
-
         # MUSS LIVE CHECK ÜBERLEBEN!
 
         if last_short > last_long:
