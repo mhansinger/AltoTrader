@@ -1,6 +1,7 @@
 # AltoTrader
 
 **Automated trading on the kraken exchange**
+
 **Trained to inform you via Twitter on the latest trades**
 
 ## Introduction
@@ -8,9 +9,7 @@ This is a trading bot to perform automated trading on the kraken exchange via [K
 
 ``pip3 install krakenex``
 
-in your console. 
-
-The trading strategy is based on the intersection of rolling means with different window width. Which window width is to choose highly depends on the traded asset pairs and the current market situation. Therefore no recommendation on the windows can be given. 
+The trading strategy is based on the intersection of rolling means with different window width. Which window width is the best  highly depends on the traded asset pairs and the current market situation. Therefore, no recommendation on the windows can be given. 
 
 
 ## Step by Step
@@ -43,8 +42,8 @@ Stream the market prices for some days (better: weeks) into your data base. You'
 #### How to:
 
 ### 4. Set up the trading engine
-Open another terminal and copy the Python files from [Trade_Algo](https://github.com/mhansinger/AltoTrader/tree/master/Trade_Algo) into your trading directory (e.g. ``XXBTZEUR``). Copy also the ``kraken.key``into this directory. 
-Have a look into the ``main.py`` file, change for the correct asset pairs and adjust the ``short`` and ``long``window width in:
+Open another terminal and copy the Python files from [Trade_Algo](https://github.com/mhansinger/AltoTrader/tree/master/Trade_Algo) into your trading directory (e.g. ``XXBTZEUR``). Copy also the ``kraken.key`` into this directory. 
+Have a look into the ``main.py`` file, change for the correct asset pairs and adjust the ``short`` and ``long`` window width in:
 
 ``XXBT_input = set_input(asset1='XXBT', asset2='ZEUR', long=100, short=47)``
 Be sure to have somehow 'good' values for the windows, otherwise the trader will burn your coins easily. 
