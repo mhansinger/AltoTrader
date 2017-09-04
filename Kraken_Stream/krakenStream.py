@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import krakenex
 import time
+import os.path
 
 class krakenStream(object):
     def __init__(self, asset1,asset2):
@@ -22,9 +23,17 @@ class krakenStream(object):
         print(self.__asset1)
         print(self.__asset2)
 
+        # checks if the series.csv is already existing, if so it reads it in
+        if (os.path.exists(self.__pair + '_Series.csv')):
+            df_old = pd.read_csv(self.__pair + '_Series.csv')
+            df_old = df_old.drop('Unnamed: 0',1)
+            self.__history = df_old
+        else:
+            self.__history = pd.DataFrame([np.zeros(len(self.__columns))], columns=self.__columns)
+
     def market_price(self):
-        __market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
-        return float(__market[0])
+        market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
+        return float(market[0])
 
     def updateHist(self):
         __thisPrice = self.market_price()

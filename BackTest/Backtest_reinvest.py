@@ -34,6 +34,7 @@ class reinvestBackTest(object):
         self.__portfolio = []                                 # set up the portfolio vector
         self.__costs = np.zeros(len(self.__time_series))
         self.__log_returns = np.zeros(len(self.__time_series))
+        self.grad =  np.zeros(len(self.__time_series))
 
         self.__investment = investment
         self.__transaction_fee = transaction_fee
@@ -51,6 +52,7 @@ class reinvestBackTest(object):
         self.__position = False
         self.__avStrat= avStrat
 
+
         # check for data type
         try:
             self.__time_series = self.__time_series.reset_index(drop=True)
@@ -60,7 +62,7 @@ class reinvestBackTest(object):
             print('Die Zeitreihe muss im Format: pd.core.series.Series sein.')
             print('z.B: .._series.Price')
 
-    def __getRollingMean(self,__window):
+    def getRollingMean(self,__window):
         __rolling_mean = self.__time_series.rolling(__window).mean()
         return __rolling_mean
 
@@ -86,7 +88,7 @@ class reinvestBackTest(object):
 
     def returnRollingMean(self, window):
         print(window)
-        __rolling_mean = self.__getRollingMean(window)
+        __rolling_mean = self.getRollingMean(window)
         __rolling_df = pd.DataFrame(__rolling_mean)
         return __rolling_df
 
@@ -129,23 +131,24 @@ class reinvestBackTest(object):
         __finalPortfolio = __initialShares * self.__time_series[-1:]
         return float(__finalPortfolio)
 
+    def computeGrad(self, pos):
+        self.grad[pos] = (6 * self.__short_mean[pos] - 3 *self.__short_mean[pos-1] - 2*self.__short_mean[pos-2] - self.__short_mean[pos-3] ) / 12
+        #self.grad[pos] = (self.__short_mean[pos] -  self.__short_mean[pos - 1])
+
     def SMA_crossOver(self):
         # computes the portfolio according to simple moving average, uses only ShortMean()
 
         # select between averaging strategy:
         if self.__avStrat=='SMA':
-            self.__long_mean = self.__getRollingMean(self.__window_long)
-            self.__short_mean = self.__getRollingMean(self.__window_short)
-            ######################
-            # bollinger bands:
-            #bollLow = self.__time_series - self.getRollingStd(self.__window_long,self.__time_series)
-            bollUp = self.__bollUp(self.__time_series,self.__long_mean,2*self.__window_long)
-            #print(bollUp)
-            ######################
+            self.__long_mean = self.getRollingMean(self.__window_long)
+            self.__short_mean = self.getRollingMean(self.__window_short)
 
         elif self.__avStrat=='EWM':
             self.__long_mean = self.__getExpMean(self.__window_long)
             self.__short_mean = self.__getExpMean(self.__window_short)
+
+        # bollinger bands:
+        bollUp = self.__bollUp(self.__time_series, self.__long_mean, 2 * self.__window_long)
 
         self.__position = False
 
@@ -163,9 +166,10 @@ class reinvestBackTest(object):
 
             # compute log returns
             self.__log_return(i)
+            self.computeGrad(i)
 
             if self.__short_mean[i] > self.__long_mean[i]:
-               if self.__position is False and emergencyExit is False and self.__time_series[i] > bollUp[i]:
+               if self.__position is False and emergencyExit is False and self.__time_series[i] > bollUp[i] and self.__time_series[i]>self.__short_mean[i]:
                    # our position is short and we want to buy
                    self.__enterMarket(i)
                    lastBuy=self.__time_series[i]
@@ -408,10 +412,10 @@ class reinvestBackTest(object):
             plt.subplot(211)
             plt.plot(self.__time_series, linewidth=2.0)
 
-            plt.plot(self.__getRollingMean(shortwin), linewidth=1.5)
-            plt.plot(self.__getRollingMean(longwin), linewidth=1.5)
-            plt.plot(self.__bollUp(self.__time_series,self.__getRollingMean(longwin),longwin), linewidth=1.5)
-            plt.plot(self.__bollLow(self.__time_series, self.__getRollingMean(longwin), longwin), linewidth=1.5)
+            plt.plot(self.getRollingMean(shortwin), linewidth=1.5)
+            plt.plot(self.getRollingMean(longwin), linewidth=1.5)
+            plt.plot(self.__bollUp(self.__time_series,self.getRollingMean(longwin),2*longwin), linewidth=1.5)
+            plt.plot(self.__bollLow(self.__time_series, self.getRollingMean(longwin), 2*longwin), linewidth=1.5)
 
             plt.legend(['Time series', 'short window', 'long window','Bollinger Up','Bollinger Low'])
 

@@ -31,8 +31,10 @@ class strategy_new(threading.Thread):
 
         # IMPORTANT: Broker muss initialisiert werden!
         self.Broker.initialize()
-        self.emergencyExit = False
-        self.exitFactor = 0.972
+
+        self.__emergencyExit = False
+        self.__exitFactor = 0.972
+        self.__bollingerFactor = 2
 
     def eval_rollings(self):
         #computes short and long rolling mean
@@ -44,10 +46,10 @@ class strategy_new(threading.Thread):
 
     def eval_MACD(self):
         # returns MACD and singan/trigger line
-        __MACD = self.history.getMACD(self.short_win,self.long_win)
-        __signal = __MACD.ewm(span=self.signalMACD).mean()
+        MACD = self.history.getMACD(self.short_win,self.long_win)
+        signal = MACD.ewm(span=self.signalMACD).mean()
         # return only the last entry of the columns as float, these will be intersected
-        return float(__MACD[-1:]), float(__signal[-1:])
+        return float(MACD[-1:]), float(signal[-1:])
 
     def intersectSMA(self):
         # call the evaluation
@@ -61,7 +63,7 @@ class strategy_new(threading.Thread):
         lastbuy = self.Broker.lastbuy
         # das muss noch geprüft werden, ob marktpreis und welcher faktor!!
         marketP = self.Broker.asset_market_ask()
-        lastBoll = self.history.getBollUp(long_sma,self.long_win*2)
+        lastBoll = self.history.getBollUp(long_sma,self.long_win*self.__bollingerFactor)
 
         # MUSS LIVE CHECK ÜBERLEBEN!
 
@@ -69,15 +71,15 @@ class strategy_new(threading.Thread):
             ## das ist das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
             # Broker.broker_status ist das Kriterium, ob der Broker gerade arbeitet, busy ist, dann wird nix gemacht vorerst!
-            if not any([self.Broker.asset_status, self.Broker.broker_status, self.emergencyExit]) and (marketP > lastBoll):
+            if not any([self.Broker.asset_status, self.Broker.broker_status, self.__emergencyExit]) and (marketP > lastBoll):
                 self.Broker.buy_order()
                 print('go long')
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
-            elif lastbuy*self.exitFactor > marketP and self.Broker.asset_status:
+            elif lastbuy*self.__exitFactor > marketP and self.Broker.asset_status:
                 # this is an emergency function to leave the market if price drops; check about 98%
-                self.emergencyExit = True
+                self.__emergencyExit = True
                 self.Broker.sell_order()
                 print('Emergency Exit!')
                 print('long mean: ', last_long)
@@ -90,7 +92,7 @@ class strategy_new(threading.Thread):
                 print(' ')
 
         elif last_long > last_short:
-            self.emergencyExit = False        #in any case reset emergency exit flag
+            self.__emergencyExit = False        #in any case reset emergency exit flag
 
             if self.Broker.asset_status is True and self.Broker.broker_status is False:
                 self.Broker.sell_order()
@@ -160,7 +162,19 @@ class strategy_new(threading.Thread):
 
 
     def setExitFactor(self,fac):
-        self.exitFactor=fac
+        self.__exitFactor=fac
+
+    def getExitFac(self):
+        return self.__exitFactor
+
+    def setBollingerFac(self,boll):
+        self.__bollingerFactor = boll
+
+    def getBollinger(self):
+        return self.__bollingerFactor
+
+    def checkExit(self):
+        return self.__emergencyExit
 
 '''
     # *************************************************
