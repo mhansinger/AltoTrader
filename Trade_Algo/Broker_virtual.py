@@ -29,6 +29,7 @@ class Broker_virtual(object):
         self.__balance_df = []
 
         self.__column_names = []
+        self.lastbuy = 0
 
     def initialize(self):
         self.__column_names = ['Time stamp', self.__asset1, self.__asset2, self.__asset1+' shares', 'costs', self.__asset1+' price']
@@ -73,6 +74,8 @@ class Broker_virtual(object):
             print(' ')
             print(__balance_update_df)
             print(' ')
+
+            self.lastbuy=__asset_ask
 
             self.asset_status = True
 

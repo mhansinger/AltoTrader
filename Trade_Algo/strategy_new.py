@@ -63,7 +63,7 @@ class strategy_new(threading.Thread):
         lastbuy = self.Broker.lastbuy
         # das muss noch geprüft werden, ob marktpreis und welcher faktor!!
         marketP = self.Broker.asset_market_ask()
-        lastBoll = self.history.getBollUp(long_sma,self.long_win*self.__bollingerFactor)
+        lastBoll = self.history.getBollUp(long_sma,self.long_win*int(self.__bollingerFactor))
 
         # MUSS LIVE CHECK ÜBERLEBEN!
 

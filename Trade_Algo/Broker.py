@@ -92,7 +92,7 @@ class Broker(object):
             self.order = self.__k.query_private('AddOrder',api_params)
 
             try:
-                self.order_id_buy = order['result']['txid'][0]
+                self.order_id_buy = self.order['result']['txid'][0]
                 print(self.order_id_buy)
                 #######################
                 # IMPORTANT: check if order is still open!
@@ -142,10 +142,10 @@ class Broker(object):
                             'volume': volume,
                             'trading_agreement': 'agree'}
             # order wird rausgeschickt!
-            order = self.__k.query_private('AddOrder', api_params)
+            self.order = self.__k.query_private('AddOrder', api_params)
 
             try:
-                self.order_id_sell = order['result']['txid'][0]
+                self.order_id_sell = self.order['result']['txid'][0]
                 # check
                 print(self.order_id_sell)
                 #######################s
