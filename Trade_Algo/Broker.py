@@ -75,9 +75,9 @@ class Broker(object):
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
-            volume2 = current_asset2_funds*0.99999
+            volume2 = current_asset2_funds
             ask = self.asset_market_ask()
-            volume1 = volume2 / ask
+            volume1 = (volume2 / ask) *0.9999
             vol_str = str(round(volume1,5))     #round -> kraken requirement
             ask_str = str(ask)
 

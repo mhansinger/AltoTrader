@@ -34,7 +34,7 @@ class strategy_new(threading.Thread):
 
         self.__emergencyExit = False
         self.__exitFactor = 0.972
-        self.__bollingerFactor = 2
+        self.__bollingerFactor = 1
 
     def eval_rollings(self):
         #computes short and long rolling mean
@@ -87,6 +87,8 @@ class strategy_new(threading.Thread):
             else:
                 self.Broker.idle()
                 print('keep calm and HODL')
+                if marketP < lastBoll:
+                    print('Price below Bollinger')
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
