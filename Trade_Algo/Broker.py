@@ -133,7 +133,7 @@ class Broker(object):
         if self.asset_status is True:
             #######################
             # kraken query: what's our stock?
-            volume = str(round((current_asset1_funds*0.99999),5))
+            volume = str(round((current_asset1_funds*0.9999),5))
 
             api_params = {'pair': self.__pair,
                             'type':'sell',
