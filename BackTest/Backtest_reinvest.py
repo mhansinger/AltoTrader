@@ -176,8 +176,8 @@ class reinvestBackTest(object):
                elif lastBuy*0.975 > self.__time_series[i] and self.__position is True:
                    #print('Emergency Exit')
                    self.__exitMarket(i)
-                   emergencyExit=True      # Notfall exit, stop loss
-               elif self.__position is False:# and emergencyExit:   # zusätzlich benötigt für Notfall exit
+                   emergencyExit=True         # Notfall exit, stop loss
+               elif self.__position is False: # and emergencyExit:   # zusätzlich benötigt für Notfall exit
                    self.__downPortfolio(i)
                elif self.__position is True:
                    # we hold a position and don't want to sell: portfolio is increasing
@@ -194,25 +194,6 @@ class reinvestBackTest(object):
             if self.__portfolio[i] < 0.0:
                 print('Skip loop, negative portfolio')
                 break
-
-
-            # neue Implementierung
-        '''
-         if self.__position == False:    # wir sind short
-             if self.__short_mean[i] > self.__long_mean[i]:# and self.__time_series[i] > bollUp[i]:
-                 self.__enterMarket(i)   # kaufen
-                 lastBuy=self.__time_series[i]
-             else:
-                 self.__downPortfolio(i) # weiterhin short bleiben
-         elif self.__position==True:     # wir sind long
-             if self.__short_mean[i] <= self.__long_mean[i]:
-                 self.__exitMarket(i)    #verkaufen
-             elif lastBuy*0.97 > self.__time_series[i]:   # steigt aus, wenn kurs zu stark fällt
-                 self.__exitMarket(i)
-                 emergencyExit=True
-             else:
-                 self.__updatePortfolio(i)   # weiter long bleiben
-     '''
 
 
         print("nach SMA: ", self.__portfolio[-1])

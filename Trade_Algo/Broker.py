@@ -93,12 +93,12 @@ class Broker(object):
 
             try:
                 self.order_id_buy = self.order['result']['txid'][0]
-                print(self.order_id_buy)
+                #print(self.order_id_buy)
                 #######################
                 # IMPORTANT: check if order is still open!
                 isfilled = self.check_order(self.order_id_buy)
-                print(isfilled)
-                print(self.order_id_buy)
+                #print(isfilled)
+                #print(self.order_id_buy)
                 #######################
             except KeyError:
                 isfilled=False
@@ -147,13 +147,13 @@ class Broker(object):
             try:
                 self.order_id_sell = self.order['result']['txid'][0]
                 # check
-                print(self.order_id_sell)
+                #print(self.order_id_sell)
                 #######################s
                 # IMPORTANT: check if order is still open!
                 isfilled = self.check_order(self.order_id_sell)
                 # check
-                print(isfilled)
-                print(self.order_id_sell)
+                #print(isfilled)
+                #print(self.order_id_sell)
                 #######################
             except KeyError:
                 isfilled = False
