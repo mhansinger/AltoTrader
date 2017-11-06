@@ -25,6 +25,6 @@ good_tweets = [
     'To the moon!',
     'I\'ve always wanted to be a champion.',
     '[̲̅$̲̅(̲̅ ͡° ͜ʖ ͡°̲̅)̲̅$̲̅]',
-
+    'start small, think big, grow fast!',
 
     ]

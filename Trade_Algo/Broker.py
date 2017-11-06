@@ -64,7 +64,7 @@ class Broker(object):
     def buy_order(self):
         # executes a buy order
 
-        self.broker_status = True
+        self.__set_broker_status(True)
         self.asset_check()
         # check den XBT balance
         current_asset2_funds = self.get_asset2_balance()
@@ -77,7 +77,7 @@ class Broker(object):
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
             volume2 = current_asset2_funds
             ask = self.asset_market_ask()
-            volume1 = (volume2 / ask) *0.9999
+            volume1 = round(((volume2 / ask) *0.9999 ),5)
             vol_str = str(round(volume1,5))     #round -> kraken requirement
             ask_str = str(ask)
 
@@ -119,13 +119,13 @@ class Broker(object):
             # change the asset status ! redundant
             self.asset_check()
 
-        self.broker_status = False
+        self.__set_broker_status(False)
 
 
     def sell_order(self):
         # executes a sell order
 
-        self.broker_status = True
+        self.__set_broker_status(True)
         bid = str(self.asset_market_bid())
         current_asset1_funds = self.get_asset1_balance()
         self.asset_check()
@@ -183,11 +183,11 @@ class Broker(object):
             # change the asset status!
             self.asset_check()
 
-        self.broker_status = False
+        self.__set_broker_status(False)
 
 
     def idle(self):
-        self.broker_status = True
+        self.__set_broker_status(True)
         try:
             __balance_np = np.array(self.__balance_df.tail())
         except AttributeError:
@@ -196,10 +196,22 @@ class Broker(object):
         # update the balance sheet
         self.update_balance('-','-')
 
-        self.broker_status = False
+        self.__set_broker_status(False)
 
 ###################################
 # Weitere member functions:
+
+    def get_broker_status(self):
+        return self.broker_status
+
+    def __set_broker_status(self,status):
+        self.broker_status=status
+
+    def get_asset_status(self):
+        return self.asset_status
+
+    def __set_asset_status(self,status):
+        self.asset_status = status
 
     def getTime(self):
         #return int(time.time())

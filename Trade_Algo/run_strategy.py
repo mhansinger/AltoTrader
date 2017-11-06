@@ -93,7 +93,7 @@ class run_strategy(threading.Thread):
             print('short mean: ', last_short)
             print(' ')
 
-    # MCAD intersect!
+    # MACD intersect!
     def intersectMACD(self):
         # call the evaluation for MACD at run time
         try:

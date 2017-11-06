@@ -16,8 +16,7 @@ class uploadBalance(threading.Thread):
         self.iterations = 0
         self.daemon = True  # OK for main to exit even if instance is still running
         self.paused = True  # start out paused
-        self.state = threading.Condition()s
-        self.__URL = url #'http://zeiselmair.de/h4ckamuenster/'
+        self.state = threading.Condition()
 
         self.asset1 = asset1
         self.asset2 = asset2
@@ -28,11 +27,13 @@ class uploadBalance(threading.Thread):
         self.__user = user
         self.__pw = password
         self.serverpath = serverpath
+        self.URL = url
 
         self.timeInteval = timeInterval
 
         #write rendite
 
+# Fehler in fullserverpath
 
     def upload_to_ftp(self,asset):
         # Upload a file to ftp server
@@ -43,10 +44,10 @@ class uploadBalance(threading.Thread):
             print("Information missing. Aborting.")
             return
         filepath=asset+'.txt'
-        session = ftplib.FTP(self.__URL, self.__user, self.__pw)
+        session = ftplib.FTP(self.URL, self.__user, self.__pw)
         myfile = open(filepath, 'rb')
         fullserverpath=self.serverpath+asset+'.txt'
-        session.storbinary('STOR ' + fullserverpath, myfile)
+        session.storbinary('STOR' + fullserverpath, myfile)
         myfile.close()
         session.quit()
 

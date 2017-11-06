@@ -66,12 +66,13 @@ class strategy_new(threading.Thread):
         lastBoll = self.history.getBollUp(long_sma,self.long_win*int(self.__bollingerFactor))
 
         # MUSS LIVE CHECK ÜBERLEBEN!
+        # --> hats überlebt!
 
         if last_short > last_long:
             ## das ist das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
             # Broker.broker_status ist das Kriterium, ob der Broker gerade arbeitet, busy ist, dann wird nix gemacht vorerst!
-            if not any([self.Broker.asset_status, self.Broker.broker_status, self.__emergencyExit]) and (marketP > lastBoll):
+            if not any([self.Broker.asset_status, self.Broker.get_broker_status(), self.__emergencyExit]) and (marketP > lastBoll):
                 self.Broker.buy_order()
                 print('go long')
                 print('long mean: ', last_long)
@@ -96,7 +97,7 @@ class strategy_new(threading.Thread):
         elif last_long > last_short:
             self.__emergencyExit = False        #in any case reset emergency exit flag
 
-            if self.Broker.asset_status is True and self.Broker.broker_status is False:
+            if self.Broker.asset_status is True and self.Broker.get_broker_status() is False:
                 self.Broker.sell_order()
                 print('go short')
                 print('long mean: ', last_long)
@@ -128,7 +129,7 @@ class strategy_new(threading.Thread):
         if MACD > signal:
             ## das ist quasi das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
-            if self.Broker.asset_status is False and self.Broker.broker_status is False:
+            if self.Broker.asset_status is False and self.Broker.get_broker_status() is False:
                 self.Broker.buy_order()
                 print('go long')
                 print('signal: ', signal)
@@ -142,7 +143,7 @@ class strategy_new(threading.Thread):
                 print(' ')
 
         elif MACD < signal:
-            if self.Broker.asset_status is True and self.Broker.broker_status is False:
+            if self.Broker.asset_status is True and self.Broker.get_broker_status() is False:
                 self.Broker.sell_order()
                 print('go short')
                 print('signal: ', signal)

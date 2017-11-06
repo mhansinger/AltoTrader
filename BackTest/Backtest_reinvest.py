@@ -71,6 +71,7 @@ class reinvestBackTest(object):
         return __exp_mean
 
     def __bollUp(self,series,mean,window):
+        # computes upper bollinger band
         delta=series.rolling(window).std()
         return mean+delta
 
@@ -132,6 +133,7 @@ class reinvestBackTest(object):
         return float(__finalPortfolio)
 
     def computeGrad(self, pos):
+        # to compute 6th order gradient
         self.grad[pos] = (6 * self.__short_mean[pos] - 3 *self.__short_mean[pos-1] - 2*self.__short_mean[pos-2] - self.__short_mean[pos-3] ) / 12
         #self.grad[pos] = (self.__short_mean[pos] -  self.__short_mean[pos - 1])
 
@@ -148,7 +150,7 @@ class reinvestBackTest(object):
             self.__short_mean = self.__getExpMean(self.__window_short)
 
         # bollinger bands:
-        bollUp = self.__bollUp(self.__time_series, self.__long_mean, 2 * self.__window_long)
+        bollUp = self.__bollUp(self.__time_series, self.__long_mean, 3 * self.__window_long)
 
         self.__position = False
 
@@ -164,9 +166,9 @@ class reinvestBackTest(object):
         for i in range((self.__window_long+1), len(self.__time_series)):        ## hier muss noch was rein, um von beliebigem index zu starten
            # print(i, self.__trades[i])
 
-            # compute log returns
+            # compute log returns and gradients
             self.__log_return(i)
-            self.computeGrad(i)
+            #self.computeGrad(i)
 
             if self.__short_mean[i] > self.__long_mean[i]:
                if self.__position is False and emergencyExit is False and self.__time_series[i] > bollUp[i] and self.__time_series[i]>self.__short_mean[i]:
