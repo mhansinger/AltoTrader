@@ -71,7 +71,7 @@ class uploadBalance(threading.Thread):
     def calcRendite(self):
         # calculates the rendite and writes a rendite.txt file
         asset1 = np.loadtxt(self.asset1+'.txt')
-        if asset1 > 0.001:
+        if asset1 > 0.00001:
             self.rendite = ((asset1 - self.initial)/self.initial * 100)
             self.rendite = int(self.rendite)
             self.writeTXT(value=self.rendite,name='rendite')
