@@ -306,12 +306,14 @@ class Broker(object):
         print(self.__balance_df.tail())
 
     def asset_check(self):
+        # ÄNDERN!!!
         # checks the assets on our account and sets the asset_status
         asset1 = self.get_asset1_balance()
         asset2 = self.get_asset2_balance()
         # normalize the price
         asset2 = asset2/self.market_price()
-        if asset1 > asset2:
+        # 95% off total volume on asset1 side
+        if asset1 > (asset2+asset1)*0.95:
             self.asset_status = True
         else:
             self.asset_status = False
