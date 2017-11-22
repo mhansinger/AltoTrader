@@ -42,7 +42,7 @@ class Broker(object):
         # check den asset_status von asset1 und stellt fest ob wir im Markt sind :
         self.asset_check()
 
-        # checken, ob bereits an XY_balance.csv existiert, sonst wird es neu angelegt
+        # checks if there aready exists a balance sheet as .csv
         if (os.path.exists(self.__pair+'_balance.csv')):
             print(self.__pair+'_balance.csv exists \n')
             old_df = pd.read_csv(self.__pair+'_balance.csv')
@@ -50,6 +50,7 @@ class Broker(object):
             self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
             self.__balance_df = old_df
         else:
+            #sets up a new, empty data frame for the balance
             self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'Buy/Sell', 'Market Price', 'Order Id']
             self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns=self.__column_names)
             self.__balance_df['Time stamp'] = self.getTime()
@@ -306,14 +307,14 @@ class Broker(object):
         print(self.__balance_df.tail())
 
     def asset_check(self):
-        # ÄNDERN!!!
         # checks the assets on our account and sets the asset_status
         asset1 = self.get_asset1_balance()
         asset2 = self.get_asset2_balance()
+        marketP = self.market_price()
         # normalize the price
-        asset2 = asset2/self.market_price()
+        asset2_norm = asset2/marketP
         # 95% off total volume on asset1 side
-        if asset1 > (asset2+asset1)*0.95:
+        if asset1 > (asset2_norm+asset1)*0.95:
             self.asset_status = True
         else:
             self.asset_status = False
