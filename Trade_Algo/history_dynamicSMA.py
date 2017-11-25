@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 class history(object):
     def __init__(self, input):
@@ -15,11 +16,12 @@ class history(object):
         self.time_series = pd.Series(raw['Price'])
 
     # computes the SMA
-    def getRollingMean(self, __window):
+    def getRollingMean(self, window):
         # berechnet den Rolling mean
 
         # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
         self.import_history()
+        self.updateWindows()
 
         try:
             if type(self.time_series) != pd.core.series.Series:
@@ -27,8 +29,8 @@ class history(object):
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
 
-        __rolling_mean = self.time_series.rolling(__window).mean()
-        return __rolling_mean
+        rolling_mean = self.time_series.rolling(window).mean()
+        return rolling_mean
 
     # upper Bollinger Band
     def getBollUp(self, sma, window):
@@ -40,7 +42,6 @@ class history(object):
 
     # for MACD
     def getMACD(self,__fast,__slow):
-
         # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
         self.import_history()
 
@@ -57,4 +58,11 @@ class history(object):
 
         # type should be pandas.Series!
         return __MACD
+
+
+    def updateWindows(self):
+        # irgendwas um die files einzulesen
+        self.input.window_short = np.loadtxt(self.path + self.pair + "_shortWin.txt")
+        self.input.window_long = np.loadtxt(self.path + self.pair + "_longWin.txt")
+
 

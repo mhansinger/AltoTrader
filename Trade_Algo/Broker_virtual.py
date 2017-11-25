@@ -29,9 +29,10 @@ class Broker_virtual(object):
         self.__balance_df = []
 
         self.__column_names = []
+        self.lastbuy = 0
 
     def initialize(self):
-        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, 'shares', 'costs', self.__asset1+' price']
+        self.__column_names = ['Time stamp', self.__asset1, self.__asset2, self.__asset1+' shares', 'costs', self.__asset1+' price']
         self.__balance_df = pd.DataFrame([np.zeros(len(self.__column_names))], columns= self.__column_names)
         self.__balance_df['Time stamp'] = self.getTime()
         self.__balance_df[self.__asset2] = self.__invest
@@ -73,6 +74,8 @@ class Broker_virtual(object):
             print(' ')
             print(__balance_update_df)
             print(' ')
+
+            self.lastbuy=__asset_ask
 
             self.asset_status = True
 
