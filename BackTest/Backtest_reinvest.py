@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import copy
+import matplotlib.pyplot as plt
 #
 
 class reinvestBackTest(object):
@@ -246,8 +247,9 @@ class reinvestBackTest(object):
 
         print("portfolio mit MACD: ", self.__portfolio[-1])
 
+
     def optimizeSMA(self, window_long_min, window_long_max, long_interval, window_short_min=1,
-                              window_short_max=1, short_interval=1):
+                    window_short_max=1, short_interval=1):
         '''should optimize the window for the best SMA'''
 
         __bestWindow_long = 0
@@ -260,11 +262,18 @@ class reinvestBackTest(object):
         __best_shares = []
         __best_returns = []
 
+        # store all returns in a matrix to visualize
+        __axis_long = np.linspace(window_long_min,window_long_max,long_interval)
+        __axis_short = np.linspace(window_short_min,window_short_max,short_interval)
+        __return_mesh = np.zeros([len(__axis_short),len(__axis_long)])
+        __i_count = 0
+
         # iterate over the two window lengths
         for i in range(window_long_min, window_long_max, long_interval):
             # assign long window
             self.__window_long = i
 
+            __j_count = 0
             for j in range(window_short_min, window_short_max, short_interval):
                 # assign short window
                 self.__window_short = j
@@ -279,6 +288,13 @@ class reinvestBackTest(object):
                 __new_shares = copy.deepcopy(self.__shares)
 
                 print("new portfolio: ", __new_portfolio[-1])
+
+                #store best last portfolio value!
+                __return_mesh[__i_count,__j_count] = __new_portfolio[-1]
+                print('Return Mesh: ', __return_mesh[__i_count,__j_count])
+                print('__i:', __i_count)
+                print('__j:',__j_count)
+                __j_count+=1
 
                 if __tmp_portfolio_old[-1] < __new_portfolio[-1]:
                     # if __tmp_shares_old[-1] < __new_shares[-1]:
@@ -296,6 +312,8 @@ class reinvestBackTest(object):
                 print("best portfolio:", __best_portfolio[-1])
                 print(" ")
 
+            __i_count+=1
+
         __output = pd.DataFrame(__best_portfolio, columns=['best_portfolio'])
         __output['best_shares'] = pd.DataFrame(__best_shares)
         __output['best_trades'] = pd.DataFrame(__best_trades)
@@ -305,6 +323,9 @@ class reinvestBackTest(object):
 
         pd.DataFrame.to_csv(pd.DataFrame(__output), filename)
         self.best_data = __output
+
+        # plot return array
+        self.returnMatrix(__axis_long, __axis_short, __return_mesh)
 
         if self.Hodl() > __best_portfolio[-1]:
             print('\nHodln wäre besser gewesen:\n')
@@ -444,7 +465,7 @@ class reinvestBackTest(object):
             plt.plot(self.best_data.best_returns, linewidth=1.0)
             plt.legend(['log returns'])
 
-            plt.show()
+            plt.show(block = False)
 
 
     def qqplot(self):
@@ -453,12 +474,12 @@ class reinvestBackTest(object):
         stats.probplot(self.best_data.best_returns, dist="norm", plot=pylab)
         pylab.show()
 
-    def boxPlot(self):
-        import matplotlib.pyplot as plt
-        plt.boxplot(abs(self.best_data.best_returns))
-        plt.show()
+   # def boxPlot(self):
+   #     plt.boxplot(abs(self.best_data.best_returns))
+   #     plt.show(block = False)
 
     def HodlPlot(self):
+        #import matplotlib.pyplot as plt
         __initialShares = self.__investment/self.__time_series[0]
         __buyHoldseries = __initialShares * self.__time_series
 
@@ -467,3 +488,16 @@ class reinvestBackTest(object):
         plt.title('Buy and Hodln')
 
         plt.show()
+
+    def returnMatrix(self,x,y,z):
+        #import matplotlib.pyplot as plt
+        plt.figure(5)
+
+        plt.contourf(z,cmap='jet')
+        #plt.xticks(str(x))
+        #plt.yticks(str(y))
+        plt.title('Return Matrix')
+        plt.xlabel('Long Window')
+        plt.ylabel('Short Window')
+        plt.colorbar()
+        plt.show(block=False)
