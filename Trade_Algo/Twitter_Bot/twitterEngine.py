@@ -38,6 +38,10 @@ class twitterEngine(object):
         self.api.update_status(this_tweet)
         print(this_tweet+'\n')
 
+    def individual_tweet(self, message):
+        # send individual message
+        self.api.update_status(message)
+
 
 
 
