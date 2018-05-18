@@ -26,5 +26,7 @@ bad_tweets = \
      '¯\_(ツ)_/¯',
      '(⊙_☉)',
      'o(╥﹏╥)o',
-
+     'Call me 24/7 at 911-for-traders',
+     'It\'s time to sleep',
+     'Do not pass Go. Do not collect $200. #monopoly'
      ]

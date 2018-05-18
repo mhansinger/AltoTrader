@@ -5,7 +5,7 @@ good_tweets = [
     'Never sell never!',
     'Keep calm and Hodl!',
     'It\'s the best!',
-    'If Warren Buffet was trading like me he\'d be rich! @WarrenBuffett',
+    'If Warren Buffet was trading like me he\'d be rich! @WarrenBuffet',
     'It\'s time for a @Lamborghini!',
     'The trend is your friend!',
     'Another beautiful day in paradise',
@@ -26,5 +26,9 @@ good_tweets = [
     'I\'ve always wanted to be a champion.',
     '[̲̅$̲̅(̲̅ ͡° ͜ʖ ͡°̲̅)̲̅$̲̅]',
     'start small, think big, grow fast!',
+    'You want it, you get it!',
+    'It\'s never enough!',
+    'The FED should print some $, I need more of it!',
+    'Think global, act local.'
 
     ]
