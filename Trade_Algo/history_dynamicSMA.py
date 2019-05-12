@@ -12,6 +12,7 @@ class history(object):
 
     def import_history(self):
         # liest die Zeitreihe ein, z.B. XETH_   Series.csv mit einer column: Price
+        # CHANGE: read in only last lines of the data file!!
         raw = pd.read_csv(self.path)
         self.time_series = pd.Series(raw['Price'])
 
@@ -36,8 +37,8 @@ class history(object):
     def getBollUp(self, sma, window):
         # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
         self.import_history()
-        delta= self.time_series.rolling(window).std()
-        boll=sma+delta
+        delta = self.time_series.rolling(window).std()
+        boll = sma+delta
         return float(boll[-1:])
 
     # for MACD

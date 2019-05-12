@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import krakenex
 import time
-import os.path
+import os
 
 class krakenStream(object):
     def __init__(self, asset1,asset2):
@@ -23,13 +23,16 @@ class krakenStream(object):
         print(self.__asset1)
         print(self.__asset2)
 
-        # checks if the series.csv is already existing, if so it reads it in
-        if (os.path.exists(self.__pair + '_Series.csv')):
-            df_old = pd.read_csv(self.__pair + '_Series.csv')
-            df_old = df_old.drop('Unnamed: 0',1)
-            self.__history = df_old
-        else:
-            self.__history = pd.DataFrame([np.zeros(len(self.__columns))], columns=self.__columns)
+        try:
+            # checks if the series.csv is already existing, if so it reads it in
+            if (os.path.exists(self.__pair + '_Series.csv')):
+                df_old = pd.read_csv(self.__pair + '_Series.csv')
+                df_old = df_old.drop('Unnamed: 0', 1)
+                self.__history = df_old
+            else:
+                self.__history = pd.DataFrame([np.zeros(len(self.__columns))], columns=self.__columns)
+        except:
+            print('sometihngs wrong wiht your time series...')
 
     def market_price(self):
         market = self.__k.query_public('Ticker', {'pair': self.__pair})['result'][self.__pair]['c']
@@ -47,6 +50,8 @@ class krakenStream(object):
 
     def writeHist(self):
         pd.DataFrame.to_csv(self.__history, self.__pair + '_Series.csv')
+
+
 
 
 

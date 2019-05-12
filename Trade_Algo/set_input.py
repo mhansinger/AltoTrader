@@ -20,6 +20,10 @@ class set_input():
         self.investment = investment
         self.series_name = self.asset1+self.asset2+'_Series.csv'
 
+
+
+
+
     # getter und setter einfügen!
 
 
