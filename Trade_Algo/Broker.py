@@ -18,7 +18,7 @@ class Broker(object):
         self.__asset1 = input.asset1
         self.__asset2 = input.asset2
         self.__pair = input.asset1+input.asset2
-        self.asset_status = False
+        self.__asset_status = False
         self.broker_status = False
         self.__k = krakenex.API()
         self.__k.load_key('kraken.key')
@@ -71,14 +71,14 @@ class Broker(object):
         current_asset2_funds = self.get_asset2_balance()
 
         # diese if abfrage ist ein double check
-        if self.asset_status is False:
+        if self.__asset_status is False:
             #######################
             # kraken query
             # wir können keine Verkaufsorder auf XBT-basis setzen, sondern nur ETH kaufen.
             # Deshalb: Limit order auf Basis des aktuellen Kurses und Berechnung des zu kaufenden ETH volumens.
             volume2 = current_asset2_funds
             ask = self.asset_market_ask()
-            volume1 = round(((volume2 / ask) *0.9999 ),5)
+            volume1 = round(((volume2 / ask) *0.999 ),5)
             vol_str = str(round(volume1,5))     #round -> kraken requirement
             ask_str = str(ask)
 
@@ -115,6 +115,7 @@ class Broker(object):
                 # update the balance sheet with buy/sell price
                 self.update_balance(self.lastbuy,self.order_id_buy)
             else:
+                print('No order placed, asset status is: ', self.get_broker_status())
                 self.update_balance('-', '-')
 
             # change the asset status ! redundant
@@ -124,17 +125,17 @@ class Broker(object):
 
 
     def sell_order(self):
-        # executes a sell order
+        # executes a sell order -> buy BTC for ETH usually
 
         self.__set_broker_status(True)
         bid = str(self.asset_market_bid())
         current_asset1_funds = self.get_asset1_balance()
         self.asset_check()
         # diese if abfrage ist ein double check
-        if self.asset_status is True:
+        if self.__asset_status is True:
             #######################
             # kraken query: what's our stock?
-            volume = str(round((current_asset1_funds*0.9999),5))
+            volume = str(round((current_asset1_funds*0.999),5))
 
             api_params = {'pair': self.__pair,
                             'type':'sell',
@@ -148,7 +149,7 @@ class Broker(object):
             try:
                 self.order_id_sell = self.order['result']['txid'][0]
                 # check
-                #print(self.order_id_sell)
+                # print(self.order_id_sell)
                 #######################s
                 # IMPORTANT: check if order is still open!
                 isfilled = self.check_order(self.order_id_sell)
@@ -179,6 +180,7 @@ class Broker(object):
                     self.setTweet(self.lastbuy,price)
                 #######################
             else:
+                print('No order placed, asset status is: ',self.get_broker_status())
                 self.update_balance('-', '-')
 
             # change the asset status!
@@ -209,10 +211,11 @@ class Broker(object):
         self.broker_status=status
 
     def get_asset_status(self):
-        return self.asset_status
+        # habe ich ETH oder nicht, bin ich im Markt: True or False
+        return self.__asset_status
 
     def __set_asset_status(self,status):
-        self.asset_status = status
+        self.__asset_status = status
 
     def getTime(self):
         #return int(time.time())
@@ -313,11 +316,11 @@ class Broker(object):
         marketP = self.market_price()
         # normalize the price
         asset2_norm = asset2/marketP
-        # 95% off total volume on asset1 side
-        if asset1 > (asset2_norm+asset1)*0.95:
-            self.asset_status = True
+        # 95% off total volume on asset1 side, which is usually ETH
+        if asset1 > (asset2_norm)*0.95:
+            self.__asset_status = True
         else:
-            self.asset_status = False
+            self.__asset_status = False
 
     # speichert die aktuellen asset1 und asset2 Werte der Krake raus, für weiteren Upload
     def __writeTXT(self,asset1,asset2):
