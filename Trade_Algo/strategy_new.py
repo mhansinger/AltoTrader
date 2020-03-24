@@ -68,29 +68,29 @@ class strategy_new(threading.Thread):
         marketAsk = self.Broker.asset_market_ask()
         Bollinger_limit = self.history.getBollUp(self.long_win*int(self.__bollingerFactor))
 
-        # TODO: check if self.__emergencyExit works the way it shoud!
+        # TODO: check Bollinger bands if they make sense
 
         # it's a good time to buy if we haven't yet
         if last_short > last_long:
             ## das ist das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
             # Broker.broker_status ist das Kriterium, ob der Broker gerade arbeitet, busy ist, dann wird nix gemacht vorerst!
-            if not any([self.Broker.get_asset_status(), self.Broker.get_broker_status(), self.__emergencyExit]) and (marketAsk > Bollinger_limit):
+            if not any([self.Broker.get_asset_status(), self.Broker.get_broker_status(), self.__emergencyExit]): # and (marketAsk > Bollinger_limit):
                 self.Broker.buy_order()
                 print('Buying %s for %s' % (self.asset1,self.asset2))
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
 
-            # TODO: does this make sense?? --> check in backtesting Engine
-            # this is an emergency function to leave the market if price drops; check about 98%
-            elif lastbuy*self.__exitFactor > marketAsk and self.Broker.get_asset_status():
-                self.__emergencyExit = True
-                self.Broker.sell_order()
-                print('Emergency Exit!')
-                print('Market is dropping!')
-                print('long mean: ', last_long)
-                print('short mean: ', last_short)
+            # # TODO: does this make sense?? --> makes no sense for now!
+            # # this is an emergency function to leave the market if price drops; check about 98%
+            # elif lastbuy*self.__exitFactor > marketAsk and self.Broker.get_asset_status():
+            #     self.__emergencyExit = True
+            #     self.Broker.sell_order()
+            #     print('Emergency Exit!')
+            #     print('Market is dropping!')
+            #     print('long mean: ', last_long)
+            #     print('short mean: ', last_short)
 
             # HODL situation
             else:
