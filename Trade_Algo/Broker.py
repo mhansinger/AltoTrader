@@ -352,3 +352,9 @@ class Broker(object):
             self.twitterEngine.good_tweet()
         elif old >= current:
             self.twitterEngine.bad_tweet()
+
+    def getAsset1(self):
+        return str(self.__asset1)
+
+    def getAsset2(self):
+        return str(self.__asset2)

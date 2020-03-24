@@ -36,13 +36,16 @@ class strategy_new(threading.Thread):
         self.__exitFactor = 0.972
         self.__bollingerFactor = 1
 
+        self.asset1 = self.Broker.getAsset1()
+        self.asset2 = self.Broker.getAsset2()
+
     def eval_rollings(self):
         #computes short and long rolling mean
-        __short_mean = self.history.getRollingMean(self.short_win)
-        __long_mean = self.history.getRollingMean(self.long_win)
-        __last_short = np.array(__short_mean)[-1]
-        __last_long = np.array(__long_mean)[-1]
-        return __last_short, __last_long, __long_mean
+        short_mean = self.history.getRollingMean(self.short_win)
+        long_mean = self.history.getRollingMean(self.long_win)
+        last_short = short_mean.iloc[-1]
+        last_long = long_mean.iloc[-1]
+        return last_short, last_long, long_mean
 
     def eval_MACD(self):
         # returns MACD and singan/trigger line
@@ -62,55 +65,64 @@ class strategy_new(threading.Thread):
         # get last buy price
         lastbuy = self.Broker.lastbuy
         # das muss noch geprüft werden, ob marktpreis und welcher faktor!!
-        marketP = self.Broker.asset_market_ask()
-        lastBoll = self.history.getBollUp(long_sma,self.long_win*int(self.__bollingerFactor))
+        marketAsk = self.Broker.asset_market_ask()
+        Bollinger_limit = self.history.getBollUp(long_sma,self.long_win*int(self.__bollingerFactor))
 
-        # MUSS LIVE CHECK ÜBERLEBEN!
-        # --> hats überlebt!
+        # TODO: check if self.__emergencyExit works the way it shoud!
 
+        # it's a good time to buy if we haven't yet
         if last_short > last_long:
             ## das ist das Kriterium, um zu checken ob wir Währung haben oder nicht,
             ## entsprechend sollten wir kaufen, oder halt nicht
             # Broker.broker_status ist das Kriterium, ob der Broker gerade arbeitet, busy ist, dann wird nix gemacht vorerst!
-            if not any([self.Broker.get_asset_status(), self.Broker.get_broker_status(), self.__emergencyExit]) and (marketP > lastBoll):
+            if not any([self.Broker.get_asset_status(), self.Broker.get_broker_status(), self.__emergencyExit]) and (marketAsk > Bollinger_limit):
                 self.Broker.buy_order()
-                print('go long')
+                print('Buying %s for %s' % (self.asset1,self.asset2))
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
-            elif lastbuy*self.__exitFactor > marketP and self.Broker.get_asset_status():
-                # this is an emergency function to leave the market if price drops; check about 98%
+
+            # TODO: does this make sense??
+            # this is an emergency function to leave the market if price drops; check about 98%
+            elif lastbuy*self.__exitFactor > marketAsk and self.Broker.get_asset_status():
                 self.__emergencyExit = True
                 self.Broker.sell_order()
                 print('Emergency Exit!')
+                print('Market is dropping!')
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
+
+            # HODL situation
             else:
                 self.Broker.idle()
-                print('keep calm and HODL')
-                if marketP < lastBoll:
+                self.__emergencyExit = False  # in any case reset emergency exit flag
+                print('keep calm and HODL '+self.asset1+' -> '+str(self.Broker.get_asset_status()))
+                if marketAsk < Bollinger_limit:
                     print('Price below Bollinger')
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
 
+        # it's a good time to sell
         elif last_long > last_short:
             self.__emergencyExit = False        #in any case reset emergency exit flag
 
             if self.Broker.get_asset_status() is True and self.Broker.get_broker_status() is False:
                 self.Broker.sell_order()
-                print('go short')
+                print('Selling %s for %s' % (self.asset1,self.asset2))
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
             else:
                 self.Broker.idle()
                 print('short, idle')
+                print('Do we have '+self.asset1+'? -> '+str(self.Broker.get_asset_status()))
                 print('long mean: ', last_long)
                 print('short mean: ', last_short)
                 print(' ')
+
+        ## idle, do nothing
         else:
-            ## idle, soll nix machen
             self.Broker.idle()
             print('idle')
             print('long mean: ', last_long)
