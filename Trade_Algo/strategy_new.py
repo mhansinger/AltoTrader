@@ -32,6 +32,7 @@ class strategy_new(threading.Thread):
         # IMPORTANT: Broker muss initialisiert werden!
         self.Broker.initialize()
 
+        # TODO: remove these variables
         self.__emergencyExit = False
         self.__exitFactor = 0.972
         self.__bollingerFactor = 1

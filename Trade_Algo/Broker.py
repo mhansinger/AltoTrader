@@ -5,6 +5,8 @@ The Broker connects with the Kraken account and does the trades
 @author: mhansinger 
 '''
 
+# TODO: setter method to update the long and short windwos
+
 import numpy as np
 import pandas as pd
 import krakenex
