@@ -27,16 +27,17 @@ class history(object):
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
 
-        __rolling_mean = self.time_series.rolling(__window).mean()
-        return __rolling_mean
+        rolling_mean = self.time_series.rolling(__window).mean()
+        return rolling_mean
 
     # upper Bollinger Band
-    def getBollUp(self, sma, window):
+    def getBollUp(self, window):
         # muss je Zeitschritt immer wieder neu eingelesen werde, da ständig upgedated
         self.import_history()
-        delta= self.time_series.rolling(window).std()
-        boll=sma+delta
-        return float(boll[-1:])
+        delta = self.time_series.rolling(window).std()
+        sma = self.time_series.rolling(window).mean()
+        boll = sma+delta
+        return float(boll.values[-1])
 
     # for MACD
     def getMACD(self,__fast,__slow):
@@ -50,11 +51,11 @@ class history(object):
         except TypeError:
             print('Zeitreihe muss im Format pd.Series sein!')
 
-        __FAST = self.time_series.ewm(span=__fast).mean()
-        __SLOW = self.time_series.ewm(span=__slow).mean()
+        FAST = self.time_series.ewm(span=__fast).mean()
+        SLOW = self.time_series.ewm(span=__slow).mean()
 
-        __MACD = __FAST - __SLOW
+        MACD = FAST - SLOW
 
         # type should be pandas.Series!
-        return __MACD
+        return MACD
 

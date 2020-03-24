@@ -66,7 +66,7 @@ class strategy_new(threading.Thread):
         lastbuy = self.Broker.lastbuy
         # das muss noch geprüft werden, ob marktpreis und welcher faktor!!
         marketAsk = self.Broker.asset_market_ask()
-        Bollinger_limit = self.history.getBollUp(long_sma,self.long_win*int(self.__bollingerFactor))
+        Bollinger_limit = self.history.getBollUp(self.long_win*int(self.__bollingerFactor))
 
         # TODO: check if self.__emergencyExit works the way it shoud!
 
@@ -82,7 +82,7 @@ class strategy_new(threading.Thread):
                 print('short mean: ', last_short)
                 print(' ')
 
-            # TODO: does this make sense??
+            # TODO: does this make sense?? --> check in backtesting Engine
             # this is an emergency function to leave the market if price drops; check about 98%
             elif lastbuy*self.__exitFactor > marketAsk and self.Broker.get_asset_status():
                 self.__emergencyExit = True
