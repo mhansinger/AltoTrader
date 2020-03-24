@@ -176,9 +176,11 @@ class strategy_new(threading.Thread):
             print(' ')
 
 
+    #TODO:remove
     def setExitFactor(self,fac):
         self.__exitFactor=fac
 
+    #TODO: remove
     def getExitFac(self):
         return self.__exitFactor
 
@@ -188,6 +190,7 @@ class strategy_new(threading.Thread):
     def getBollinger(self):
         return self.__bollingerFactor
 
+    # TODO: remove
     def checkExit(self):
         return self.__emergencyExit
 
