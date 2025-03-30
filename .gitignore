@@ -1,8 +1,11 @@
 # ignored files
-
+venv
+.venv
 
 *.csv
 *.txt
+
+.setup.py.swp
 
 __pycache__
 
