@@ -1,0 +1,15 @@
+2025-03-31 19:05:41,457 - asyncio - DEBUG - Using selector: EpollSelector
+2025-03-31 19:08:27,115 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.kraken.com:443
+2025-03-31 19:08:27,238 - urllib3.connectionpool - DEBUG - https://api.kraken.com:443 "GET /0/public/Ticker?pair=XETHZEUR HTTP/1.1" 200 None
+2025-03-31 19:12:57,153 - __main__ - INFO - Instatiated KrakenTicker with asset1 XETH and asset2 ZEUR
+2025-03-31 19:12:57,157 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.kraken.com:443
+2025-03-31 19:12:57,306 - urllib3.connectionpool - DEBUG - https://api.kraken.com:443 "GET /0/public/Ticker?pair=XETHZEUR HTTP/1.1" 200 None
+2025-03-31 19:27:34,214 - __main__ - INFO - Instatiated KrakenTicker with asset1 XETH and asset2 ZEUR
+2025-03-31 19:27:34,217 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.kraken.com:443
+2025-03-31 19:27:34,328 - urllib3.connectionpool - DEBUG - https://api.kraken.com:443 "GET /0/public/Ticker?pair=XETHZEUR HTTP/1.1" 200 None
+2025-03-31 19:27:34,330 - __main__ - INFO - XETHZEUR @ 2025-03-31 19:27:34 -> 1698.08000
+2025-03-31 19:30:33,956 - __main__ - INFO - Instatiated KrakenTicker with asset1->XETH and asset2->ZEUR
+2025-03-31 19:31:13,853 - __main__ - INFO - Instatiated KrakenTicker with asset1->XETH and asset2->ZEUR
+2025-03-31 19:31:13,856 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.kraken.com:443
+2025-03-31 19:31:13,972 - urllib3.connectionpool - DEBUG - https://api.kraken.com:443 "GET /0/public/Ticker?pair=XETHZEUR HTTP/1.1" 200 None
+2025-03-31 19:31:13,973 - __main__ - INFO - XETHZEUR @ 2025-03-31 19:31:13 -> 1696.13000

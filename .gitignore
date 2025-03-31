@@ -1,9 +1,10 @@
 # ignored files
 venv
 .venv
+.vscode
 
 *.csv
-*.txt
+
 
 .setup.py.swp
 
