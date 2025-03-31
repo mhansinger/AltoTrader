@@ -1,15 +1,19 @@
 import logging
+import os
 
 
-def setup_logging():
+def setup_logging(log_filename: str = "app.log"):
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    log_filepath = os.path.join(log_dir, log_filename)
+
     logging.basicConfig(
-        # Set the minimum level to capture (DEBUG is the lowest)
         level=logging.DEBUG,
-        # Log format
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            # Log to a file named package_name.log
-            logging.FileHandler("package_name.log"),
-            logging.StreamHandler()  # Log to the console
+            logging.FileHandler(log_filepath, mode="a"),  # Append logs to file
+            logging.StreamHandler()  # Also log to console
         ]
     )
+
+    logging.info("Logging initialized.")

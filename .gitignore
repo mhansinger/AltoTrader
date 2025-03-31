@@ -1,14 +1,21 @@
 # ignored files
 venv
 .venv
+.vscode/*
 .vscode
+env
+dev.env
 
 *.csv
+logs
+logs/
+*.log
 
 
 .setup.py.swp
 
 __pycache__
+.pytest_cache
 
 *.key
 
