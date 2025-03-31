@@ -25,6 +25,8 @@ class KrakenTicker(object):
         :param asset2: 'XXBT'
         '''
 
+        # TODO: read pairs form config file
+
         self.asset1: str = asset1
         self.asset2: str = asset2
         self.timestamp = None
@@ -55,9 +57,10 @@ class KrakenTicker(object):
             datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         return timestamp
 
-    def market_price(self) -> float | None:
+    def get_market_price(self) -> float | None:
         """Fetches the latest market price for the trading pair."""
         try:
+            # TODO: get several pairs for one query
             market_query = self.k.query_public('Ticker', {'pair': self.pair})
 
             # Check if response contains 'error' field with any errors
@@ -105,4 +108,4 @@ class KrakenTicker(object):
 
 if __name__ == "__main__":
     myTicker = KrakenTicker(asset1="XETH", asset2="ZEUR")
-    myTicker.market_price()
+    myTicker.get_market_price()
