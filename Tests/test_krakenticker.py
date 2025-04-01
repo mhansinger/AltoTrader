@@ -1,62 +1,87 @@
 import pytest
-from unittest.mock import patch
-from altotrader.krakenticker import KrakenTicker
+from unittest.mock import patch, Mock
+import pandas as pd
+from datetime import datetime
+import krakenex
+import os
+from altotrader.ticker.krakenticker import KrakenTicker
+
+# Test the _load_yaml method
 
 
-@pytest.fixture
-def ticker():
-    """Fixture to create a KrakenTicker instance."""
-    return KrakenTicker(asset1="XETH", asset2="ZEUR")
+def test_load_yaml():
+    # Get the path to the mock_pairs.yaml file located in the Tests/ directory
+    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+
+    # Instantiate KrakenTicker with the correct path
+    ticker = KrakenTicker(test_file_path)
+
+    # Call the load_yaml method directly (it should have been called in __init__)
+    pairs = ticker.load_yaml(test_file_path)
+
+    # Verify that the list returned is correct
+    assert pairs == ['XETHZEUR', 'XXBTZEUR']
 
 
-@patch("altotrader.krakenticker.krakenex.API.query_public")
-def test_market_price_success(mock_query_public, ticker):
-    """Test market_price() when the API returns a valid response."""
-    mock_query_public.return_value = {
-        "error": [],
-        "result": {
-            "XETHZEUR": {
-                "c": ["3500.12", "1.5"]  # ["last trade price", "lot volume"]
-            }
-        }
-    }
-
-    price = ticker.market_price()
-    assert price == 3500.12
+# # Test the get_market_query method with a successful response
 
 
-@patch("altotrader.krakenticker.krakenex.API.query_public")
-def test_market_price_api_error(mock_query_public, ticker):
-    """Test market_price() when Kraken API returns an error."""
-    mock_query_public.return_value = {
-        "error": ["Invalid request"]
-    }
+@patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}}})
+def test_get_market_query(mock_query_public):
+    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    ticker = KrakenTicker(test_file_path)
 
-    price = ticker.market_price()
-    assert price is None
+    # Call the method to get the market query
+    market_query = ticker.get_market_query()
 
+    # Assert the response contains the expected data
+    assert isinstance(market_query, dict)
+    assert "XETHZEUR" in market_query
+    assert market_query["XETHZEUR"]["c"][0] == 1743.55
 
-@patch("altotrader.krakenticker.krakenex.API.query_public")
-def test_market_price_invalid_response_structure(mock_query_public, ticker):
-    """Test market_price() when API response is missing expected fields."""
-    mock_query_public.return_value = {
-        "error": [],
-        "result": {}  # Missing expected trading pair key
-    }
-
-    price = ticker.market_price()
-    assert price is None
+# # Test the get_market_price method with a valid response
 
 
-@patch("altotrader.krakenticker.krakenex.API.query_public")
-def test_market_price_missing_price_data(mock_query_public, ticker):
-    """Test market_price() when API response does not contain 'c' key."""
-    mock_query_public.return_value = {
-        "error": [],
-        "result": {
-            "XETHZEUR": {}  # Missing 'c' key
-        }
-    }
+@patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}, "XXBTZEUR": {"c": [78230.1]}}})
+def test_get_market_price_valid(mock_query_public):
+    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    ticker = KrakenTicker(test_file_path)
 
-    price = ticker.market_price()
-    assert price is None
+    # Call the method to get the market price DataFrame
+    df = ticker.get_market_price()
+
+    # Assert the returned DataFrame has the expected shape and columns
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (1, 2)  # 1 row, 2 columns (XETHZEUR and XXBTZEUR)
+    assert 'XETHZEUR' in df.columns
+    assert 'XXBTZEUR' in df.columns
+    assert df.index[0] == pd.to_datetime(ticker.current_timestamp())
+    assert df['XETHZEUR'][0] == 1743.55
+    assert df['XXBTZEUR'][0] == 78230.1
+
+# # Test the get_market_price method when no valid data is returned
+
+
+@patch.object(krakenex.API, 'query_public', return_value={"result": {}})
+def test_get_market_price_no_data(mock_query_public):
+    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    ticker = KrakenTicker(test_file_path)
+
+    # Call the method to get the market price DataFrame
+    df = ticker.get_market_price()
+
+    # Assert the returned DataFrame is empty
+    assert df.empty
+
+
+# # Test the get_market_price method with an error in the API cal
+@patch.object(krakenex.API, 'query_public', side_effect=Exception("API call failed"))
+def test_get_market_price_error(mock_query_public):
+    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    ticker = KrakenTicker(test_file_path)
+
+    # Call the method to get the market price DataFrame
+    df = ticker.get_market_price()
+
+    # Assert the returned DataFrame is empty
+    assert df.empty
