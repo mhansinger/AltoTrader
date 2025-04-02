@@ -1,9 +1,14 @@
 Metadata-Version: 2.4
 Name: altotrader
 Version: 0.1.0
-Author: Maximilian Hansinger
-Provides-Extra: dev
-Requires-Dist: pytest>=6.0; extra == "dev"
-Requires-Dist: tox>=3.0; extra == "dev"
+Author: mhansinger
+Requires-Python: >=3.11
+Requires-Dist: krakenex==2.2.2
+Requires-Dist: pandas==2.2.3
+Requires-Dist: numpy==2.2.4
+Requires-Dist: requests==2.32.3
+Requires-Dist: influxdb-client==1.48.0
+Requires-Dist: pyyaml==6.0.2
 Dynamic: author
-Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python

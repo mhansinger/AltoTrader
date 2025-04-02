@@ -11,7 +11,8 @@ from altotrader.ticker.krakenticker import KrakenTicker
 
 def test_load_yaml():
     # Get the path to the mock_pairs.yaml file located in the Tests/ directory
-    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    test_file_path = os.path.join(os.path.dirname(
+        __file__), 'mock_data/mock_pairs.yaml')
 
     # Instantiate KrakenTicker with the correct path
     ticker = KrakenTicker(test_file_path)
@@ -28,7 +29,8 @@ def test_load_yaml():
 
 @patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}}})
 def test_get_market_query(mock_query_public):
-    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    test_file_path = os.path.join(os.path.dirname(
+        __file__), 'mock_data/mock_pairs.yaml')
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market query
@@ -44,7 +46,8 @@ def test_get_market_query(mock_query_public):
 
 @patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}, "XXBTZEUR": {"c": [78230.1]}}})
 def test_get_market_price_valid(mock_query_public):
-    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    test_file_path = os.path.join(os.path.dirname(
+        __file__), 'mock_data/mock_pairs.yaml')
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame
@@ -64,7 +67,8 @@ def test_get_market_price_valid(mock_query_public):
 
 @patch.object(krakenex.API, 'query_public', return_value={"result": {}})
 def test_get_market_price_no_data(mock_query_public):
-    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    test_file_path = os.path.join(os.path.dirname(
+        __file__), 'mock_data/mock_pairs.yaml')
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame
@@ -77,7 +81,8 @@ def test_get_market_price_no_data(mock_query_public):
 # # Test the get_market_price method with an error in the API cal
 @patch.object(krakenex.API, 'query_public', side_effect=Exception("API call failed"))
 def test_get_market_price_error(mock_query_public):
-    test_file_path = os.path.join(os.path.dirname(__file__), 'mock_pairs.yaml')
+    test_file_path = os.path.join(os.path.dirname(
+        __file__), 'mock_data/mock_pairs.yaml')
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame

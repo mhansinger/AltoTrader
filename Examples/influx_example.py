@@ -4,37 +4,28 @@ import time
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-TOKEN = os.environ.get("INFLUXDB_TOKEN")
-PORT = os.environ.get("INFLUX_PORT")
-org = "altotrader"
-url = f"http://localhost:{PORT}"
+from altotrader.ticker.krakenticker import KrakenTicker
 
-print(TOKEN)
+INFLUXDB_INIT_ADMIN_TOKEN = os.environ.get("INFLUXDB_INIT_ADMIN_TOKEN")
+INFLUXDB_INIT_BUCKET = os.environ.get("INFLUXDB_INIT_BUCKET")
+INFLUXDB_INIT_ORG = os.environ.get("INFLUXDB_INIT_ORG")
+INFLUX_URL = os.environ.get("INFLUX_URL")
 
-client = influxdb_client.InfluxDBClient(url=url, token=TOKEN, org=org)
+# get sample data
+myTicker = KrakenTicker(pairs_yaml="Examples/kraken_pairs.yaml")
+df = myTicker.get_market_price()
 
-bucket = "test_pair"
+with InfluxDBClient(url=INFLUX_URL, token=INFLUXDB_INIT_ADMIN_TOKEN) as client:
+    write_api = client.write_api(SYNCHRONOUS)
 
-# write
-write_api = client.write_api(write_options=SYNCHRONOUS)
+    for timestamp, row in df.iterrows():
+        for pair, price in row.items():
+            point = Point("kraken") \
+                .tag("pair", pair) \
+                .field("price", float(price)) \
+                .time(timestamp)
 
-for value in range(5):
-    point = (
-        Point("measurement1")
-        .tag("tagname1", "tagvalue1")
-        .field("field1", value)
-    )
-    write_api.write(bucket=bucket, org="altotrader", record=point)
-    time.sleep(1)  # separate points by 1 second
+            write_api.write(bucket=INFLUXDB_INIT_BUCKET,
+                            org=INFLUXDB_INIT_ORG, record=point)
 
-# query
-query_api = client.query_api()
-
-query = """from(bucket: "test_pair")
- |> range(start: -10m)
- |> filter(fn: (r) => r._measurement == "measurement1")"""
-tables = query_api.query(query, org="altotrader")
-
-for table in tables:
-    for record in table.records:
-        print(record)
+print("Successfully wrote Kraken data to InfluxDB!")

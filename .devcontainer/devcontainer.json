@@ -1,18 +1,46 @@
 {
-  "name": "Python DevContainer",
-  "image": "mcr.microsoft.com/devcontainers/python:0-3.11",
+  "name": "Python DevContainer (Ubuntu with Git)",
+  "image": "ubuntu:22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true,
+      "optimize": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": false
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "username": "vscode",
+      "uid": "1000",
+      "upgradePackages": true,
+      "installAzCli": false
+    }
+  },
+  "forwardPorts": [
+    8000
+  ],
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
   "customizations": {
     "vscode": {
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "editor.formatOnSave": true,
-        "python.formatting.provider": "black"
+        "python.formatting.provider": "black",
+        "git.enableCommitSigning": true,
+        "git.autofetch": true
       },
       "extensions": [
         "ms-python.python",
-        "ms-python.black-formatter"
+        "ms-python.black-formatter",
+        "eamodio.gitlens"
       ]
     }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends vim && pip install --no-cache-dir -r dev-requirements.txt && pip install --no-cache-dir -r requirements.txt"
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends vim git-lfs && pip install --no-cache-dir -r dev-requirements.txt -r requirements.txt",
+  "remoteUser": "vscode"
 }
