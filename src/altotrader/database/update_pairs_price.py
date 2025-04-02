@@ -49,7 +49,6 @@ def update_pairs_price(yaml_pairs_path: str = "Examples/kraken_pairs.yaml") -> b
             for pair, price in row.items():
                 points.append(
                     Point("kraken")
-                    .tag("exchange", "kraken")  # Additional tag for filtering
                     .tag("pair", pair)
                     .field("price", float(price))
                     .time(timestamp)
@@ -86,30 +85,3 @@ def update_pairs_price(yaml_pairs_path: str = "Examples/kraken_pairs.yaml") -> b
 
 if __name__ == '__main__':
     update_pairs_price()
-
-# def update_pairs_price(yaml_pairs_path: str = "Examples/kraken_pairs.yaml"):
-#     """updates the Influx database with the market price for different crypto pairs
-#     """
-
-#     INFLUXDB_INIT_ADMIN_TOKEN = os.environ.get("INFLUXDB_INIT_ADMIN_TOKEN")
-#     INFLUXDB_INIT_BUCKET = os.environ.get("INFLUXDB_INIT_BUCKET")
-#     INFLUXDB_INIT_ORG = os.environ.get("INFLUXDB_INIT_ORG")
-#     INFLUX_URL = os.environ.get("INFLUX_URL")
-
-#     myTicker = KrakenTicker(pairs_yaml=yaml_pairs_path)
-#     df = myTicker.get_market_price()
-
-#     with InfluxDBClient(url=INFLUX_URL, token=INFLUXDB_INIT_ADMIN_TOKEN) as client:
-#         write_api = client.write_api(SYNCHRONOUS)
-
-#         for timestamp, row in df.iterrows():
-#             for pair, price in row.items():
-#                 point = Point("kraken") \
-#                     .tag("pair", pair) \
-#                     .field("price", float(price)) \
-#                     .time(timestamp)
-
-#                 write_api.write(bucket=INFLUXDB_INIT_BUCKET,
-#                                 org=INFLUXDB_INIT_ORG, record=point)
-
-#     print("Successfully wrote Kraken data to InfluxDB!")
