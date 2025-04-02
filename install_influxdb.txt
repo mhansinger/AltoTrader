@@ -1,0 +1,24 @@
+# 1. Fix key import (use the correct key)
+sudo apt-get update && sudo apt-get install -y gnupg2
+curl -s https://repos.influxdata.com/influxdb.key | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/influxdb.gpg
+
+# 2. Add repository (explicitly for Debian/Ubuntu)
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdb.gpg] https://repos.influxdata.com/debian stable main" | sudo tee /etc/apt/sources.list.d/influxdb.list
+
+# 3. Install InfluxDB v2
+sudo apt-get update && sudo apt-get install -y influxdb2
+
+# 4. Start the service (systemd not available in dev containers - use direct binary)
+sudo mkdir -p /var/lib/influxdb2
+sudo chown -R $(whoami) /var/lib/influxdb2
+influxd --engine-path=/var/lib/influxdb2/engine > /dev/null 2>&1 &
+
+# 5. Initialize (in another terminal tab)
+sleep 5  # Wait for service to start
+influx setup \
+  --username $INFLUXDB_INIT_USERNAME \
+  --password $INFLUXDB_INIT_PASSWORD \
+  --org $INFLUXDB_INIT_ORG \
+  --bucket $INFLUXDB_INIT_BUCKET \
+  --token $INFLUXDB_INIT_ADMIN_TOKEN \
+  --force

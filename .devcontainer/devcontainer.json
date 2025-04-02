@@ -1,15 +1,12 @@
 {
   "name": "Python DevContainer",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "features": {
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.11"
-    }
-  },
+  "image": "mcr.microsoft.com/devcontainers/python:0-3.11",
   "customizations": {
     "vscode": {
       "settings": {
-        "editor.formatOnSave": true
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "python.formatting.provider": "black"
       },
       "extensions": [
         "ms-python.python",
@@ -17,5 +14,5 @@
       ]
     }
   },
-  "postCreateCommand": "apt-get update && apt-get install -y vim && pip install -r dev-requirements.txt && pip install -r requirements.txt"
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends vim && pip install --no-cache-dir -r dev-requirements.txt && pip install --no-cache-dir -r requirements.txt"
 }

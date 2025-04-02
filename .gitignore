@@ -3,7 +3,6 @@ venv
 .venv
 .vscode/*
 .vscode
-env
 dev.env
 
 *.csv

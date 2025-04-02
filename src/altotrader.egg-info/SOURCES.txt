@@ -2,10 +2,13 @@ README.md
 pyproject.toml
 setup.py
 src/altotrader/__init__.py
-src/altotrader/krakenticker.py
 src/altotrader/logging_config.py
 src/altotrader.egg-info/PKG-INFO
 src/altotrader.egg-info/SOURCES.txt
 src/altotrader.egg-info/dependency_links.txt
 src/altotrader.egg-info/requires.txt
 src/altotrader.egg-info/top_level.txt
+src/altotrader/backtest/__init__.py
+src/altotrader/database/__init__.py
+src/altotrader/ticker/__init__.py
+src/altotrader/ticker/krakenticker.py
