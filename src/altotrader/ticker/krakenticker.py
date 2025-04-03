@@ -9,6 +9,7 @@ import datetime
 import yaml
 
 from altotrader.logging_config import setup_logging
+from altotrader.ticker.baseticker import BaseTicker
 
 # Set up logging configuration
 setup_logging()
@@ -17,7 +18,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class KrakenTicker(object):
+class KrakenTicker(BaseTicker):
     def __init__(self, pairs_yaml: str):
         """
         Object streamt über krakenex.API die aktuellen Marktpreise
@@ -27,25 +28,26 @@ class KrakenTicker(object):
         self.k = krakenex.API()
         self.pairs_list = self.load_yaml(pairs_yaml)
 
-        logger.info(f"Instatiated KrakenTicker with asset pairs: {self.pairs_list}")
+        logger.info(
+            f"Instatiated KrakenTicker with asset pairs: {self.pairs_list}")
 
-    def load_yaml(self, pairs_yaml: str) -> list[str]:
-        with open(pairs_yaml, "r") as file:
-            kraken_pairs = yaml.safe_load(file)
+    # def load_yaml(self, pairs_yaml: str) -> list[str]:
+    #     with open(pairs_yaml, "r") as file:
+    #         kraken_pairs = yaml.safe_load(file)
 
-        if isinstance(kraken_pairs, dict):
-            pairs_list = list(kraken_pairs.values()).pop()
-        elif isinstance(kraken_pairs, list):
-            pairs_list = kraken_pairs
-        else:
-            pairs_list = [kraken_pairs]  # Wrap single value in a list
-        return pairs_list
+    #     if isinstance(kraken_pairs, dict):
+    #         pairs_list = list(kraken_pairs.values()).pop()
+    #     elif isinstance(kraken_pairs, list):
+    #         pairs_list = kraken_pairs
+    #     else:
+    #         pairs_list = [kraken_pairs]  # Wrap single value in a list
+    #     return pairs_list
 
-    def current_timestamp(self) -> datetime:
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        return timestamp
+    # def current_timestamp(self) -> datetime:
+    #     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
+    #         "%Y-%m-%d %H:%M:%S"
+    #     )
+    #     return timestamp
 
     def get_market_query(self) -> dict:
         try:
@@ -95,29 +97,16 @@ class KrakenTicker(object):
                     pd.to_datetime([])
                 )
 
-            df = pd.DataFrame(market_prices, columns=["timestamp", "pair", "price"])
+            df = pd.DataFrame(market_prices, columns=[
+                              "timestamp", "pair", "price"])
 
             df = df.pivot(index="timestamp", columns="pair", values="price")
 
             return df
 
         except Exception as e:
-            # Log any exceptions that occur during the execution
             logger.exception(f"Error fetching market prices: {e}")
-            return pd.DataFrame()  # Return empty DataFrame on error
-
-    # def updateHist(self):
-    #     thisPrice = self.market_price()
-    #     time = time.strftime("%m.%d.%y_%H:%M:%S", time.localtime())
-    #     temp = [[time, thisPrice]]
-    #     temp_df = pd.DataFrame(temp, columns=self.columns)
-    #     self.history = self.history.append(temp_df)
-    #     print(temp_df)
-    #     # time.sleep(59)
-    #     # self.iterations += 1
-
-    # def writeHist(self):
-    #     pd.DataFrame.to_csv(self.history, self.pair + '_Series.csv')
+            return pd.DataFrame()
 
 
 if __name__ == "__main__":
