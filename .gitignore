@@ -9,6 +9,7 @@ dev.env
 logs
 logs/
 *.log
+*.parquet
 
 
 .setup.py.swp

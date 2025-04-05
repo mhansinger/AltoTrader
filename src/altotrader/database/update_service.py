@@ -44,7 +44,6 @@ class TickerUpdateService:
         """
         try:
             influx_config = {
-                # TODO: bucket more flexible for different exchanges
                 "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
                 "org": org or os.getenv("INFLUXDB_INIT_ORG"),
                 "url": url or os.getenv("INFLUX_URL"),
@@ -63,8 +62,6 @@ class TickerUpdateService:
             if df.empty:
                 logger.warning("No data returned from ticker provider")
                 return False
-
-            logger.info(f"Processing {len(df)} data points...")
 
             # Generate data points
             points = self._generate_points(df)
@@ -95,8 +92,6 @@ class TickerUpdateService:
         if not points:
             logger.warning("No points to write")
             return False
-
-        logger.info(f"Writing {len(points)} points to InfluxDB...")
 
         try:
             with InfluxDBClient(

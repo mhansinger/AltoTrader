@@ -27,4 +27,3 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "ipython", "black"]
-influx = ["influxdb-client"]

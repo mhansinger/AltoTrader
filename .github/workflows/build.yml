@@ -1,0 +1,58 @@
+name: Build Python Package
+
+on:
+  push:
+    branches: [ "main", "development" ]  
+  pull_request:
+    branches: [ "main", "development" ]
+  release:
+    types: [ created ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .[dev]
+      - name: Run tests
+        run: |
+          pytest -W ignore
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+      
+      # DEV-Branch: Version mit "-dev" suffix
+      - name: Create .dev package version
+        if: github.ref == 'refs/heads/development'
+        run: |
+          echo "DEV-Build, add '-dev' to package version..."
+          sed -i 's/^version = .*/&.dev/' pyproject.toml 
+
+      - name: Build package
+        run: |
+          python -m build
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-${{ github.ref_name }}
+          path: dist/
