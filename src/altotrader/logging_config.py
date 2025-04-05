@@ -16,4 +16,4 @@ def setup_logging(log_filename: str = "altotrader.logs"):
         ],
     )
 
-    logging.info("Logging initialized.")
+    # logging.info("Logging initialized.")
