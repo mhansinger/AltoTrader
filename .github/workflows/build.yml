@@ -44,13 +44,17 @@ jobs:
       - name: Create .dev package version
         if: github.ref == 'refs/heads/development'
         run: |
-          echo "DEV-Build, add '.dev' to package version..."
+          echo "DEV-Build, add '-dev' to package version..."
           sed -i 's/^version = .*/&.dev/' pyproject.toml 
 
+      - name: Build package
+        run: |
+          python -m build
+          ls -la dist/  # Verify build output
+      
       - name: Sanitize branch name
         id: sanitize
         run: |
-          # Replace invalid characters with underscore
           SANITIZED_NAME=$(echo "${{ github.ref_name }}" | sed 's/[\/:"<>|*?\\]/-/g')
           echo "SANITIZED_NAME=${SANITIZED_NAME}" >> $GITHUB_OUTPUT
       
@@ -59,3 +63,4 @@ jobs:
         with:
           name: python-package-${{ steps.sanitize.outputs.SANITIZED_NAME }}
           path: dist/
+          if-no-files-found: error  # Fail if no files are found
