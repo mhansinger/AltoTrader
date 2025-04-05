@@ -4,18 +4,19 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.client.exceptions import InfluxDBError
 import logging
 from typing import Optional, Union
+import pandas as pd
 
 from altotrader.ticker.krakenticker import KrakenTicker
 from altotrader.ticker.baseticker import BaseTicker
 from altotrader.logging_config import setup_logging
 
-setup_logging()
+setup_logging(log_filename='ticker_update.logs')
 
 # Create a logger for this module
 logger = logging.getLogger(__name__)
 
 
-class PriceUpdateService:
+class TickerUpdateService:
     def __init__(self, ticker: BaseTicker):
         """Initialize with a ticker provider instance.
 
@@ -43,6 +44,7 @@ class PriceUpdateService:
         """
         try:
             influx_config = {
+                # TODO: bucket more flexible for different exchanges
                 "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
                 "org": org or os.getenv("INFLUXDB_INIT_ORG"),
                 "url": url or os.getenv("INFLUX_URL"),
@@ -75,7 +77,7 @@ class PriceUpdateService:
                 f"Unexpected error in price update: {str(e)}", exc_info=True)
             return False
 
-    def _generate_points(self, df) -> list:
+    def _generate_points(self, df: pd.DataFrame) -> list:
         """Convert DataFrame to InfluxDB points."""
         points = []
         for timestamp, row in df.iterrows():
@@ -121,7 +123,7 @@ class PriceUpdateService:
 if __name__ == "__main__":
 
     ticker = KrakenTicker(pairs_yaml="Examples/kraken_pairs.yaml")
-    service = PriceUpdateService(ticker)
+    service = TickerUpdateService(ticker)
 
     # Update prices (using environment variables for config)
     success = service.update_pairs_price()

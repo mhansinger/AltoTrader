@@ -31,24 +31,6 @@ class KrakenTicker(BaseTicker):
         logger.info(
             f"Instatiated KrakenTicker with asset pairs: {self.pairs_list}")
 
-    # def load_yaml(self, pairs_yaml: str) -> list[str]:
-    #     with open(pairs_yaml, "r") as file:
-    #         kraken_pairs = yaml.safe_load(file)
-
-    #     if isinstance(kraken_pairs, dict):
-    #         pairs_list = list(kraken_pairs.values()).pop()
-    #     elif isinstance(kraken_pairs, list):
-    #         pairs_list = kraken_pairs
-    #     else:
-    #         pairs_list = [kraken_pairs]  # Wrap single value in a list
-    #     return pairs_list
-
-    # def current_timestamp(self) -> datetime:
-    #     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-    #         "%Y-%m-%d %H:%M:%S"
-    #     )
-    #     return timestamp
-
     def get_market_query(self) -> dict:
         try:
             response = self.k.query_public("Ticker")
