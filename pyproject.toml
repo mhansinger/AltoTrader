@@ -26,4 +26,4 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ipython", "black"]
+dev = ["pytest", "ipython", "black", "build"]
