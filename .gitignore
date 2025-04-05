@@ -4,6 +4,7 @@ venv
 .vscode/*
 .vscode
 dev.env
+dist
 
 *.csv
 logs

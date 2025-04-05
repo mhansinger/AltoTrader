@@ -2,11 +2,9 @@ name: Build AltoTrader Package
 
 on:
   push:
-    branches: [ "main", "development" ]  
+    branches: [ "development" ]  # Only pushes to development
   pull_request:
-    branches: [ "main", "development" ]
-  release:
-    types: [ created ]
+    branches: [ "development" ]  # Only PRs targeting development
 
 jobs:
   test:
@@ -40,30 +38,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
       
-      # DEV-Branch: Version mit "-dev" suffix
-      - name: Create .dev package version
-        if: github.ref == 'refs/heads/development'
+      # Add .dev suffix (since we only run for development)
+      - name: Add dev version suffix
         run: |
-          echo "DEV-Build, add '-dev' to package version..."
-          sed -i 's/^version = .*/&.dev/' pyproject.toml 
+          echo "Adding .dev to package version..."
+          sed -i 's/^version = "\(.*\)"/version = "\1.dev"/' pyproject.toml
 
       - name: Build package
         run: |
           python -m build
-          ls -la dist/  # Verify build output
-      
-      - name: Set artifact name
-        id: set-artifact-name
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/development" ]; then
-            echo "ARTIFACT_NAME=altotrader.dev" >> $GITHUB_OUTPUT
-          else
-            echo "ARTIFACT_NAME=altotrader" >> $GITHUB_OUTPUT
-          fi
-      
+          ls -la dist/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.set-artifact-name.outputs.ARTIFACT_NAME }}
+          name: altotrader  # Always this name
           path: dist/
           if-no-files-found: error
