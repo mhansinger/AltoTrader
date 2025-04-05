@@ -52,15 +52,18 @@ jobs:
           python -m build
           ls -la dist/  # Verify build output
       
-      - name: Sanitize branch name
-        id: sanitize
+      - name: Set artifact name
+        id: set-artifact-name
         run: |
-          SANITIZED_NAME=$(echo "${{ github.ref_name }}" | sed 's/[\/:"<>|*?\\]/-/g')
-          echo "SANITIZED_NAME=${SANITIZED_NAME}" >> $GITHUB_OUTPUT
+          if [ "${{ github.ref }}" == "refs/heads/development" ]; then
+            echo "ARTIFACT_NAME=altotrader.dev" >> $GITHUB_OUTPUT
+          else
+            echo "ARTIFACT_NAME=altotrader" >> $GITHUB_OUTPUT
+          fi
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-${{ steps.sanitize.outputs.SANITIZED_NAME }}
+          name: ${{ steps.set-artifact-name.outputs.ARTIFACT_NAME }}
           path: dist/
-          if-no-files-found: error  # Fail if no files are found
+          if-no-files-found: error
