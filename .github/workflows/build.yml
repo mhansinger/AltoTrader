@@ -44,15 +44,18 @@ jobs:
       - name: Create .dev package version
         if: github.ref == 'refs/heads/development'
         run: |
-          echo "DEV-Build, add '-dev' to package version..."
+          echo "DEV-Build, add '.dev' to package version..."
           sed -i 's/^version = .*/&.dev/' pyproject.toml 
 
-      - name: Build package
+      - name: Sanitize branch name
+        id: sanitize
         run: |
-          python -m build
+          # Replace invalid characters with underscore
+          SANITIZED_NAME=$(echo "${{ github.ref_name }}" | sed 's/[\/:"<>|*?\\]/-/g')
+          echo "SANITIZED_NAME=${SANITIZED_NAME}" >> $GITHUB_OUTPUT
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-${{ github.ref_name }}
+          name: python-package-${{ steps.sanitize.outputs.SANITIZED_NAME }}
           path: dist/
