@@ -25,12 +25,14 @@ class TickerUpdateService:
                             (e.g., KrakenTicker instance)
         """
         self.ticker = ticker
+        self._ticker_entry = None
 
-    def update_pairs_price(self,
-                           bucket: Optional[str] = None,
-                           org: Optional[str] = None,
-                           url: Optional[str] = None,
-                           token: Optional[str] = None) -> bool:
+    def update_pairs_ticker(self,
+                            ticker_entry: Optional[str] = None,
+                            bucket: Optional[str] = None,
+                            org: Optional[str] = None,
+                            url: Optional[str] = None,
+                            token: Optional[str] = None) -> bool:
         """Updates the InfluxDB with market prices for different crypto pairs.
 
         Args:
@@ -42,6 +44,7 @@ class TickerUpdateService:
         Returns:
             bool: True if update succeeded, False otherwise.
         """
+
         try:
             influx_config = {
                 "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
@@ -56,15 +59,30 @@ class TickerUpdateService:
                 raise ValueError(
                     f"Missing configuration: {', '.join(missing)}")
 
-            logger.info("Fetching market prices...")
-            df = self.ticker.get_market_price()
+            ticker_entries = [
+                ticker_entry] if ticker_entry else ["a", "b", "c"]
+            all_points = []
 
-            if df.empty:
-                logger.warning("No data returned from ticker provider")
+            market_query = self.ticker.get_market_query()
+
+            for entry in ticker_entries:
+
+                logger.info(f"Fetching prices for ticker_entry '{entry}'...")
+
+                df = self.ticker.get_last_ticker(
+                    ticker_entry=entry, market_query=market_query)
+                if df.empty:
+                    logger.warning(
+                        f"No data returned for ticker entry '{entry}'")
+                    continue
+
+                points = self._generate_points(df, entry)
+                all_points.extend(points)
+
+            if not all_points:
+                logger.warning(
+                    "No valid market data found for any ticker entry")
                 return False
-
-            # Generate data points
-            points = self._generate_points(df)
 
             # Write to InfluxDB
             return self._write_points(points, influx_config)
@@ -74,7 +92,7 @@ class TickerUpdateService:
                 f"Unexpected error in price update: {str(e)}", exc_info=True)
             return False
 
-    def _generate_points(self, df: pd.DataFrame) -> list:
+    def _generate_points(self, df: pd.DataFrame, ticker_entry: str) -> list:
         """Convert DataFrame to InfluxDB points."""
         points = []
         for timestamp, row in df.iterrows():
@@ -82,6 +100,7 @@ class TickerUpdateService:
                 points.append(
                     Point("kraken")
                     .tag("pair", pair)
+                    .tag("ticker_entry", ticker_entry)
                     .field("price", float(price))
                     .time(timestamp)
                 )
@@ -120,5 +139,5 @@ if __name__ == "__main__":
     ticker = KrakenTicker(pairs_yaml="Examples/kraken_pairs.yaml")
     service = TickerUpdateService(ticker)
 
-    # Update prices (using environment variables for config)
-    success = service.update_pairs_price()
+    # Update ticker prices for c, a, b
+    success = service.update_pairs_ticker()

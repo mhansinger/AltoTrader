@@ -29,11 +29,21 @@ class BaseTicker(ABC):
             pairs_list = [kraken_pairs]  # Wrap single value in a list
         return pairs_list
 
-    def current_timestamp(self) -> datetime:
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+    def current_timestamp(self) -> datetime.datetime:
+        timestamp = datetime.datetime.now(datetime.timezone.utc)  # .strftime(
+        #     "%Y-%m-%d %H:%M:%S"
+        # )
         return timestamp
+
+    @property
+    def timestamp_last_fetch(self) -> datetime.datetime:
+        return self._timestamp_last_fetch
+
+    @timestamp_last_fetch.setter
+    def timestamp_last_fetch(self, value: datetime.datetime):
+        if not isinstance(value, datetime.datetime):
+            raise ValueError("timestamp_last_fetch must be a datetime object.")
+        self._timestamp_last_fetch = value
 
     @abstractmethod
     def get_market_query(self) -> Dict:
@@ -45,13 +55,15 @@ class BaseTicker(ABC):
         pass
 
     @abstractmethod
-    def get_market_price(self) -> pd.DataFrame:
-        """Get normalized market prices.
+    def get_last_ticker(self, ticker_entry: str) -> pd.DataFrame:
+        """Get normalized market ticker prices.
+        ticker_entry[str]: c for close, a for ask, b for bid
+        For XXBTZEUR: EUR bid for 1 BTC
 
         Returns:
             DataFrame with:
             - Index: timestamp
             - Columns: trading pairs
-            - Values: prices
+            - Values: close prices
         """
         pass

@@ -13,7 +13,7 @@ INFLUX_URL = os.environ.get("INFLUX_URL")
 
 # get sample data
 myTicker = KrakenTicker(pairs_yaml="Examples/kraken_pairs.yaml")
-df = myTicker.get_market_price()
+df = myTicker.get_last_ticker()
 
 with InfluxDBClient(url=INFLUX_URL, token=INFLUXDB_INIT_ADMIN_TOKEN) as client:
     write_api = client.write_api(SYNCHRONOUS)
