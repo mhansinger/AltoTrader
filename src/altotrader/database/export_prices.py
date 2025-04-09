@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 def export_prices(path_to_parquet: str,
                   days_into_past: int = 30,
+                  file_format: str = 'parquet',
                   bucket: Optional[str] = None,
                   org: Optional[str] = None,
                   url: Optional[str] = None,
@@ -56,14 +57,20 @@ def export_prices(path_to_parquet: str,
 
         df = pd.DataFrame(data)
 
-        df['timestamp'] = pd.to_datetime(df['_time'])
+        df['timestamp'] = pd.to_datetime(df['_time']).dt.floor('S')
 
         # Reshape DataFrame to have pairs as columns and prices as values
         df_pivot = df.pivot_table(
-            index='timestamp', columns='pair', values='_value')
+            index=['timestamp', 'ticker_entry'], columns='pair', values='_value')
 
-        filename = f"{influx_config.get('bucket')}_latest_{days_into_past}d.parquet"
-        df_pivot.to_parquet(join(path_to_parquet, filename))
+        filename = f"{influx_config.get('bucket')}_latest_{days_into_past}d.{file_format}"
+        if file_format == 'csv':
+            df_pivot.to_csv(join(path_to_parquet, filename))
+        elif file_format == 'parquet':
+            df_pivot.to_parquet(join(path_to_parquet, filename))
+        else:
+            logger.error(f"file format {file_format} not known!")
+            return False
 
         return True
 
@@ -73,4 +80,5 @@ def export_prices(path_to_parquet: str,
 
 
 if __name__ == '__main__':
-    export_prices(path_to_parquet='Examples', days_into_past=20)
+    export_prices(path_to_parquet='Examples',
+                  days_into_past=20, file_format='csv')
