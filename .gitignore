@@ -5,6 +5,7 @@ venv
 .vscode
 dev.env
 dist
+*.egg-info
 
 *.csv
 logs

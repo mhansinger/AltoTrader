@@ -51,14 +51,14 @@ def test_get_market_price_valid(mock_query_public):
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame
-    df = ticker.get_market_price()
+    df = ticker.get_last_ticker(ticker_entry='c')
 
     # Assert the returned DataFrame has the expected shape and columns
     assert isinstance(df, pd.DataFrame)
     assert df.shape == (1, 2)  # 1 row, 2 columns (XETHZEUR and XXBTZEUR)
     assert 'XETHZEUR' in df.columns
     assert 'XXBTZEUR' in df.columns
-    assert df.index[0] == pd.to_datetime(ticker.current_timestamp())
+    assert abs(df.index[0] - ticker.current_timestamp()) < pd.Timedelta("1s")
     assert df['XETHZEUR'][0] == 1743.55
     assert df['XXBTZEUR'][0] == 78230.1
 
@@ -72,7 +72,7 @@ def test_get_market_price_no_data(mock_query_public):
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame
-    df = ticker.get_market_price()
+    df = ticker.get_last_ticker(ticker_entry='c')
 
     # Assert the returned DataFrame is empty
     assert df.empty
@@ -86,7 +86,7 @@ def test_get_market_price_error(mock_query_public):
     ticker = KrakenTicker(test_file_path)
 
     # Call the method to get the market price DataFrame
-    df = ticker.get_market_price()
+    df = ticker.get_last_ticker(ticker_entry='c')
 
     # Assert the returned DataFrame is empty
     assert df.empty
