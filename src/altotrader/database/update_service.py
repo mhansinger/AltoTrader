@@ -10,14 +10,9 @@ from altotrader.ticker.krakenticker import KrakenTicker
 from altotrader.ticker.baseticker import BaseTicker
 from altotrader.logging_config import setup_logging
 
-setup_logging(log_filename='ticker_update.logs')
-
-# Create a logger for this module
-logger = logging.getLogger(__name__)
-
 
 class TickerUpdateService:
-    def __init__(self, ticker: BaseTicker):
+    def __init__(self, ticker: BaseTicker, log_dir: str = 'logs'):
         """Initialize with a ticker provider instance.
 
         Args:
@@ -26,6 +21,10 @@ class TickerUpdateService:
         """
         self.ticker = ticker
         self._ticker_entry = None
+
+        setup_logging(log_filename='ticker_update.logs', log_dir=log_dir)
+
+        self.logger = logging.getLogger(__name__)
 
     def update_pairs_ticker(self,
                             ticker_entry: Optional[str] = None,
@@ -67,12 +66,13 @@ class TickerUpdateService:
 
             for entry in ticker_entries:
 
-                logger.info(f"Fetching prices for ticker_entry '{entry}'...")
+                self.logger.info(
+                    f"Fetching prices for ticker_entry '{entry}'...")
 
                 df = self.ticker.get_last_ticker(
                     ticker_entry=entry, market_query=market_query)
                 if df.empty:
-                    logger.warning(
+                    self.logger.warning(
                         f"No data returned for ticker entry '{entry}'")
                     continue
 
@@ -80,7 +80,7 @@ class TickerUpdateService:
                 all_points.extend(points)
 
             if not all_points:
-                logger.warning(
+                self.logger.warning(
                     "No valid market data found for any ticker entry")
                 return False
 
@@ -88,7 +88,7 @@ class TickerUpdateService:
             return self._write_points(points, influx_config)
 
         except Exception as e:
-            logger.error(
+            self.logger.error(
                 f"Unexpected error in price update: {str(e)}", exc_info=True)
             return False
 
@@ -109,7 +109,7 @@ class TickerUpdateService:
     def _write_points(self, points: list, config: dict) -> bool:
         """Write points to InfluxDB."""
         if not points:
-            logger.warning("No points to write")
+            self.logger.warning("No points to write")
             return False
 
         try:
@@ -124,13 +124,13 @@ class TickerUpdateService:
                     org=config["org"],
                     record=points
                 )
-                logger.info("Write completed successfully")
+                self.logger.info("Write completed successfully")
                 return True
 
         except InfluxDBError as e:
-            logger.error(f"InfluxDB write failed: {str(e)}")
+            self.logger.error(f"InfluxDB write failed: {str(e)}")
             if hasattr(e, 'response') and e.response:
-                logger.error(f"Response details: {e.response.text}")
+                self.logger.error(f"Response details: {e.response.text}")
             return False
 
 

@@ -2,8 +2,8 @@ from altotrader.database.update_service import TickerUpdateService
 from altotrader.ticker.krakenticker import KrakenTicker
 
 
-def run_update():
-    ticker = KrakenTicker(pairs_yaml="Examples/kraken_pairs.yaml")
+def run_update(pair_yaml: str):
+    ticker = KrakenTicker(pairs_yaml=pair_yaml, log_dir='logs')
     service = TickerUpdateService(ticker)
 
     # Update ticker prices for c, a, b
@@ -11,4 +11,4 @@ def run_update():
 
 
 if __name__ == '__main__':
-    run_update()
+    run_update(pair_yaml='kraken_pairs.yaml')

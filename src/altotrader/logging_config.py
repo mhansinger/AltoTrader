@@ -2,8 +2,8 @@ import logging
 import os
 
 
-def setup_logging(log_filename: str = "altotrader.logs"):
-    log_dir = "logs"
+def setup_logging(log_filename: str = "altotrader.logs", log_dir: str = "logs"):
+
     os.makedirs(log_dir, exist_ok=True)
     log_filepath = os.path.join(log_dir, log_filename)
 
