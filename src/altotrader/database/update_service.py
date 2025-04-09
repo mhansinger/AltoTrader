@@ -85,7 +85,7 @@ class TickerUpdateService:
                 return False
 
             # Write to InfluxDB
-            return self._write_points(points, influx_config)
+            return self._write_points(all_points, influx_config)
 
         except Exception as e:
             self.logger.error(
