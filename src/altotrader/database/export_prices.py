@@ -31,54 +31,58 @@ def export_prices(path_to_parquet: str,
         "token": token or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN")
     }
 
-    try:
+    ticker_entries = ['a', 'b', 'c']  # ask, bid, current
 
-        # Initialize InfluxDB client
-        client = InfluxDBClient(
-            url=influx_config.get('url'), token=influx_config.get('token'), org=influx_config.get('org'))
+    for ticker in ticker_entries:
+        try:
 
-        query_api = client.query_api()
+            # Initialize InfluxDB client
+            client = InfluxDBClient(
+                url=influx_config.get('url'), token=influx_config.get('token'), org=influx_config.get('org'))
 
-        query = f'''
-        from(bucket: "{influx_config.get('bucket')}")
-        |> range(start: -{days_into_past}d)
-        |> filter(fn: (r) => r["_measurement"] == "kraken") 
-        |> filter(fn: (r) => r["_field"] == "price") 
-        '''
+            query_api = client.query_api()
 
-        result = query_api.query(query)
+            query = f'''
+            from(bucket: "{influx_config.get('bucket')}")
+            |> range(start: -{days_into_past}d)
+            |> filter(fn: (r) => r["_measurement"] == "kraken") 
+            |> filter(fn: (r) => r["_field"] == "price")
+            |> filter(fn: (r) => r["ticker_entry"] == "{ticker}")
+            '''
 
-        client.close()
+            result = query_api.query(query)
 
-        data = []
-        for table in result:
-            for record in table.records:
-                data.append(record.values)
+            client.close()
 
-        df = pd.DataFrame(data)
+            data = []
+            for table in result:
+                for record in table.records:
+                    data.append(record.values)
 
-        df['timestamp'] = pd.to_datetime(df['_time']).dt.floor('S')
+            df = pd.DataFrame(data)
 
-        # Reshape DataFrame to have pairs as columns and prices as values
-        df_pivot = df.pivot_table(
-            index=['timestamp', 'ticker_entry'], columns='pair', values='_value')
+            df['timestamp'] = pd.to_datetime(df['_time']).dt.floor('s')
 
-        filename = f"{influx_config.get('bucket')}_latest_{days_into_past}d.{file_format}"
-        if file_format == 'csv':
-            df_pivot.to_csv(join(path_to_parquet, filename))
-        elif file_format == 'parquet':
-            df_pivot.to_parquet(join(path_to_parquet, filename))
-        else:
-            logger.error(f"file format {file_format} not known!")
+            # Reshape DataFrame to have pairs as columns and prices as values
+            df_pivot = df.pivot_table(
+                index=['timestamp', 'ticker_entry'], columns='pair', values='_value')
+
+            filename = f"{influx_config.get('bucket')}_latest_{days_into_past}d_{ticker}.{file_format}"
+            if file_format == 'csv':
+                df_pivot.to_csv(join(path_to_parquet, filename))
+            elif file_format == 'parquet':
+                df_pivot.to_parquet(join(path_to_parquet, filename))
+            else:
+                logger.error(f"file format {file_format} not known!")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error in export process: {e} and ticker {ticker}")
             return False
 
-        return True
-
-    except Exception as e:
-        logger.error(f"Error in export process: {e}")
-        return False
+    return True
 
 
 if __name__ == '__main__':
-    export_prices(path_to_parquet='Examples',
+    export_prices(path_to_parquet='Examples/ticker_export',
                   days_into_past=20, file_format='csv')
