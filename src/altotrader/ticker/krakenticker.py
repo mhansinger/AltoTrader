@@ -6,7 +6,6 @@ import os
 import logging
 from typing import List
 import datetime
-import yaml
 
 from altotrader.logging_config import setup_logging
 from altotrader.ticker.baseticker import BaseTicker
