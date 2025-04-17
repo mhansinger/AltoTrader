@@ -36,7 +36,7 @@ class DataLoader:
         export_path = self.config_dict.get('export_path')
         days = self.config_dict.get('latest_days')
 
-        def load_and_resample(suffix: str):
+        def load_and_resample(suffix: str) -> pd.DataFrame:
             path = join(
                 export_path, f"krakenticker_latest_{days}d_{suffix}.csv")
             self.logger.debug(f"Loading: {path}")
@@ -51,7 +51,12 @@ class DataLoader:
         self.ticker_bid = load_and_resample("b")
         self.ticker_current = load_and_resample("c")
 
-    def get_rolling_means(self, window_short: int, window_long: int) -> None:
+        # fill NaN if any
+        self.ticker_ask = self._iterpolate_nan(self.ticker_ask)
+        self.ticker_bid = self._iterpolate_nan(self.ticker_bid)
+        self.ticker_current = self._iterpolate_nan(self.ticker_current)
+
+    def compute_rolling_means(self, window_short: int, window_long: int) -> None:
         """computes the rolling means for ask, bid, current dataframes with short and long
         widnow width.
 
@@ -66,22 +71,32 @@ class DataLoader:
         self._window_long = window_long
         self._window_short = window_short
 
-        if self.ticker_current or self.ticker_ask or self.ticker_bid is None:
+        if self.ticker_current.all() is None or self.ticker_ask.all() is None or self.ticker_bid.all() is None:
             self.load_csv_export()
 
-        self.rolling_ask_short = self.ticker_ask.rolling(
-            f'{window_short}min').mean()
-        self.rolling_bid_short = self.ticker_bid.rolling(
-            f'{window_short}min').mean()
+        # self.rolling_ask_short = self.ticker_ask.rolling(
+        #     f'{window_short}min').mean()
+        # self.rolling_bid_short = self.ticker_bid.rolling(
+        #     f'{window_short}min').mean()
         self.rolling_current_short = self.ticker_current.rolling(
             f'{window_short}min').mean()
 
-        self.rolling_ask_long = self.ticker_ask.rolling(
-            f'{window_long}min').mean()
-        self.rolling_bid_long = self.ticker_bid.rolling(
-            f'{window_long}min').mean()
+        # self.rolling_ask_long = self.ticker_ask.rolling(
+        #     f'{window_long}min').mean()
+        # self.rolling_bid_long = self.ticker_bid.rolling(
+        #     f'{window_long}min').mean()
         self.rolling_current_long = self.ticker_current.rolling(
             f'{window_long}min').mean()
+
+    def _iterpolate_nan(self, df: pd.DataFrame) -> pd.DataFrame:
+        """check if NaN in df. If so, interpolate linearly"""
+        assert type(df.index) == pd.core.indexes.datetimes.DatetimeIndex
+
+        if df.isna().any().any():
+            df = df.interpolate(method='time')
+            self.logger.info(f"NaNs are interpolated")
+
+        return df
 
     @property
     def window_long(self):
@@ -98,3 +113,4 @@ if __name__ == '__main__':
                "latest_days": 20, "logs_dir": 'logs'}
     testloader = DataLoader(my_dict)
     testloader.load_csv_export()
+    testloader.compute_rolling_means(window_short=50, window_long=200)
