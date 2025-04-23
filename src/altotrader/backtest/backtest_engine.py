@@ -13,26 +13,43 @@ class BacktestEngine:
         self.base_currency = backtest_config.get("base_currency")
         self.pair = self.trading_currency+self.base_currency
 
-        self.market_data_view = pd.DataFrame()
+        self.portfolio_view = pd.DataFrame()
 
         # load crypto ticker data
         self.dataloader.load_csv_export()
 
-        self._set_market_data_df()
+        self._set_portfolio_view_df()
 
-    def _set_market_data_df(self):
-        self.market_data_view[self.pair] = self.dataloader.ticker_current[self.pair]
-        self.market_data_view[self.pair +
-                              '_ask'] = self.dataloader.ticker_ask[self.pair]
-        self.market_data_view[self.pair +
-                              '_bid'] = self.dataloader.ticker_bid[self.pair]
+    def _set_portfolio_view_df(self):
+        """creates a dataframe (portfolio_view) that stores all relevant information such as,
+        current, ask, bid prices, market position etc.
+        Needs to be resetted for every run."""
 
-        self.market_data_view[self.base_currency] = self.initial_invest
-        self.market_data_view[self.trading_currency] = 0
-        self.market_data_view["market_position"] = None
-        self.market_data_view["action"] = None
+        self.portfolio_view[self.pair] = self.dataloader.ticker_current[self.pair]
+        self.portfolio_view[self.pair +
+                            '_ask'] = self.dataloader.ticker_ask[self.pair]
+        self.portfolio_view[self.pair +
+                            '_bid'] = self.dataloader.ticker_bid[self.pair]
+
+        self.portfolio_view[self.base_currency] = self.initial_invest
+        self.portfolio_view[self.trading_currency] = 0
+        self.portfolio_view['portfolio_in_'+self.base_currency] = None
+        self.portfolio_view["market_position"] = None
+        self.portfolio_view["action"] = None
 
         # TODO add columns for long and short rolling means
+
+    def enter_market(self):
+        # do stuff
+        pass
+
+    def exit_market(self):
+        # do stuff
+        pass
+
+    def upadte_portfolio(self):
+        # do stuff
+        pass
 
 
 if __name__ == '__main__':
