@@ -21,7 +21,7 @@ def export_prices(path_to_parquet: str,
                   org: Optional[str] = None,
                   url: Optional[str] = None,
                   token: Optional[str] = None) -> bool:
-    """Export latest prices from InfluxDB to parquet.
+    """Export latest prices from InfluxDB to parquet or csv.
     """
 
     influx_config = {
