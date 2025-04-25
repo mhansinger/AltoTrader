@@ -2,9 +2,10 @@ name: Build AltoTrader Package
 
 on:
   push:
-    branches: [ "development" ]  # Only pushes to development
+    branches:
+      - development
   pull_request:
-    branches: [ "development" ]  # Only PRs targeting development
+    branches: [ "development" ]
 
 jobs:
   test:
