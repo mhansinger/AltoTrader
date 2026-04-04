@@ -71,20 +71,20 @@ class DataLoader:
         self._window_long = window_long
         self._window_short = window_short
 
-        if self.ticker_current.all() is None or self.ticker_ask.all() is None or self.ticker_bid.all() is None:
+        if self.ticker_current is None or self.ticker_ask is None or self.ticker_bid is None:
             self.load_csv_export()
 
-        # self.rolling_ask_short = self.ticker_ask.rolling(
-        #     f'{window_short}min').mean()
-        # self.rolling_bid_short = self.ticker_bid.rolling(
-        #     f'{window_short}min').mean()
+        self.rolling_ask_short = self.ticker_ask.rolling(
+            f'{window_short}min').mean()
+        self.rolling_bid_short = self.ticker_bid.rolling(
+            f'{window_short}min').mean()
         self.rolling_current_short = self.ticker_current.rolling(
             f'{window_short}min').mean()
 
-        # self.rolling_ask_long = self.ticker_ask.rolling(
-        #     f'{window_long}min').mean()
-        # self.rolling_bid_long = self.ticker_bid.rolling(
-        #     f'{window_long}min').mean()
+        self.rolling_ask_long = self.ticker_ask.rolling(
+            f'{window_long}min').mean()
+        self.rolling_bid_long = self.ticker_bid.rolling(
+            f'{window_long}min').mean()
         self.rolling_current_long = self.ticker_current.rolling(
             f'{window_long}min').mean()
 
