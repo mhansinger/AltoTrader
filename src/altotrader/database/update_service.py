@@ -159,6 +159,10 @@ class TickerUpdateService:
             if hasattr(e, 'response') and e.response:
                 self.logger.error(f"Response details: {e.response.text}")
             return False
+        except Exception as e:
+            # Catches ConnectionError, TimeoutError, etc. so retry logic still works
+            self.logger.error(f"Unexpected error writing to InfluxDB: {str(e)}")
+            return False
 
     def _write_points_with_retry(self, points: list, config: dict) -> bool:
         """Write points to InfluxDB with exponential backoff retry.

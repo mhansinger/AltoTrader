@@ -71,7 +71,7 @@ class DataLoader:
         self._window_long = window_long
         self._window_short = window_short
 
-        if self.ticker_current.all() is None or self.ticker_ask.all() is None or self.ticker_bid.all() is None:
+        if self.ticker_current is None or self.ticker_ask is None or self.ticker_bid is None:
             self.load_csv_export()
 
         self.rolling_ask_short = self.ticker_ask.rolling(
