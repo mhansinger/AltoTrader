@@ -1,0 +1,50 @@
+services:
+
+  # ── InfluxDB time-series database ────────────────────────────────────────────
+  influxdb:
+    image: influxdb:2.7
+    container_name: altotrader_influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"      # InfluxDB UI (http://<hetzner-ip>:8086) + API
+    environment:
+      # First-run auto-setup: only applied when the DB is uninitialized.
+      # Values come from the .env file in the project root.
+      DOCKER_INFLUXDB_INIT_MODE:         ${INFLUXDB_INIT_MODE:-setup}
+      DOCKER_INFLUXDB_INIT_USERNAME:     ${INFLUXDB_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD:     ${INFLUXDB_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG:          ${INFLUXDB_INIT_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET:       ${INFLUXDB_INIT_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_INIT_ADMIN_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2      # persistent time-series data
+      - influxdb_config:/etc/influxdb2        # persistent config / tokens
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── AltoTrader Kraken streamer ────────────────────────────────────────────────
+  altotrader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: altotrader:latest
+    container_name: altotrader_streamer
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy   # wait until InfluxDB passes its health check
+    environment:
+      INFLUXDB_INIT_BUCKET:       ${INFLUXDB_INIT_BUCKET}
+      INFLUXDB_INIT_ORG:          ${INFLUXDB_INIT_ORG}
+      INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_INIT_ADMIN_TOKEN}
+      # Always use the Docker-internal hostname, never localhost
+      INFLUX_URL:                 http://influxdb:8086
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  influxdb_data:
+  influxdb_config:
