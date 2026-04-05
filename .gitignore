@@ -1,6 +1,11 @@
 # ignored files
 venv
 .venv
+
+# Secrets – never commit actual env files
+.env
+*.env
+!env/.env.example   # keep the template
 .vscode/*
 .vscode
 dev.env
