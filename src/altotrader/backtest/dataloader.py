@@ -35,15 +35,18 @@ class DataLoader:
 
         export_path = self.config_dict.get('export_path')
         days = self.config_dict.get('latest_days')
+        # Optional prefix override; defaults to 'krakenticker' for backward compat
+        prefix = self.config_dict.get('file_prefix', 'krakenticker')
 
         def load_and_resample(suffix: str) -> pd.DataFrame:
             path = join(
-                export_path, f"krakenticker_latest_{days}d_{suffix}.csv")
+                export_path, f"{prefix}_latest_{days}d_{suffix}.csv")
             self.logger.debug(f"Loading: {path}")
             df = pd.read_csv(path, index_col="timestamp",
                              parse_dates=["timestamp"])
             df = df.sort_index()
-            df = df.drop('ticker_entry', axis=1)
+            if 'ticker_entry' in df.columns:
+                df = df.drop('ticker_entry', axis=1)
 
             return df.resample("1min").mean()
 
