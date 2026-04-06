@@ -3,8 +3,8 @@
 Uses the public ``/api/v3/ticker/24hr`` endpoint which returns last price,
 ask, and bid for all symbols without authentication.
 
-Pair format: ``BTCEUR``, ``ETHBTC``, ``SOLUSDT`` …
-(Binance spot symbol convention – uppercase, no separator)
+Pair format: ``BTC-EUR``, ``ETH-BTC``, ``SOL-USDT`` …
+(unified hyphen-separated format; converted to ``BTCEUR`` internally)
 """
 from __future__ import annotations
 
@@ -21,16 +21,22 @@ class BinanceTicker(RestBaseTicker):
 
     EXCHANGE = "binance"
 
+    # _to_exchange_pair() inherited default: "BTC-EUR" → "BTCEUR" ✓
+
     def get_market_query(self) -> Dict:
         """Fetch 24-hour ticker stats for all configured pairs.
 
         Returns:
-            Normalised dict ``{symbol: {c, a, b}}``.
+            Normalised dict ``{unified_pair: {c, a, b}}``
+            (e.g. ``{"BTC-EUR": {"c": 60000.0, "a": 60010.0, "b": 59990.0}}``).
         """
         try:
+            exchange_pairs = [self._to_exchange_pair(p) for p in self.pairs_list]
+            reverse        = self._exchange_to_unified_map()  # BTCEUR → BTC-EUR
+
             params: dict = {}
-            if self.pairs_list:
-                params["symbols"] = json.dumps(self.pairs_list)
+            if exchange_pairs:
+                params["symbols"] = json.dumps(exchange_pairs)
 
             data = self._get(f"{_BASE_URL}/ticker/24hr", params=params)
             if isinstance(data, dict):
@@ -38,10 +44,11 @@ class BinanceTicker(RestBaseTicker):
 
             result: Dict = {}
             for item in data:
-                sym = item["symbol"]
-                if sym not in self.pairs_list:
+                ex_sym   = item["symbol"]
+                unified  = reverse.get(ex_sym)
+                if unified is None:
                     continue
-                result[sym] = {
+                result[unified] = {
                     "c": float(item["lastPrice"]),
                     "a": float(item["askPrice"]),
                     "b": float(item["bidPrice"]),

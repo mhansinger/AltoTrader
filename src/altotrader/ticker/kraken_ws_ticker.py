@@ -22,11 +22,12 @@ Or use it as a context manager:
         service = TickerUpdateService(ticker)
         service.update_pairs_ticker(...)
 
-Kraken WS pair format
----------------------
-The REST API uses pairs like 'XXBTZEUR', but the WS API uses 'XBT/EUR'.
-This class handles the conversion automatically via *PAIR_MAP*.  Add any
-missing mappings to PAIR_MAP as needed.
+Pair format
+-----------
+Pairs in the YAML file use the unified hyphen-separated convention (e.g.
+``BTC-EUR``, ``ETH-BTC``).  The ticker converts them to Kraken's WS format
+(``XBT/EUR``, ``ETH/XBT``) automatically via *PAIR_MAP*.  Add any missing
+mappings to PAIR_MAP as needed.
 """
 
 import json
@@ -41,24 +42,25 @@ import pandas as pd
 from altotrader.logging_config import setup_logging
 from altotrader.ticker.baseticker import BaseTicker
 
-# ── REST → WS pair name mapping ───────────────────────────────────────────────
+# ── Unified pair → Kraken WS pair name mapping ────────────────────────────────
+# Add new pairs here as needed.
 PAIR_MAP: Dict[str, str] = {
-    "XXBTZEUR":  "XBT/EUR",
-    "XETHZEUR":  "ETH/EUR",
-    "XETHXXBT":  "ETH/XBT",
-    "SOLZEUR":   "SOL/EUR",
-    "SOLXBT":    "SOL/XBT",
-    "ADAZEUR":   "ADA/EUR",
-    "ADAXBT":    "ADA/XBT",
-    "LINKZEUR":  "LINK/EUR",
-    "LINKXBT":   "LINK/XBT",
-    "XXRPZEUR":  "XRP/EUR",
-    "XXRPXXBT":  "XRP/XBT",
-    "DOTZEUR":   "DOT/EUR",
-    "DOTXBT":    "DOT/XBT",
+    "BTC-EUR":  "XBT/EUR",
+    "ETH-EUR":  "ETH/EUR",
+    "ETH-BTC":  "ETH/XBT",
+    "SOL-EUR":  "SOL/EUR",
+    "SOL-BTC":  "SOL/XBT",
+    "ADA-EUR":  "ADA/EUR",
+    "ADA-BTC":  "ADA/XBT",
+    "LINK-EUR": "LINK/EUR",
+    "LINK-BTC": "LINK/XBT",
+    "XRP-EUR":  "XRP/EUR",
+    "XRP-BTC":  "XRP/XBT",
+    "DOT-EUR":  "DOT/EUR",
+    "DOT-BTC":  "DOT/XBT",
 }
-# Reverse mapping: WS name → REST name
-_WS_TO_REST: Dict[str, str] = {v: k for k, v in PAIR_MAP.items()}
+# Reverse mapping: WS name → unified pair name
+_WS_TO_UNIFIED: Dict[str, str] = {v: k for k, v in PAIR_MAP.items()}
 
 _WS_URL = "wss://ws.kraken.com"
 _RECONNECT_DELAY = 5   # seconds between reconnect attempts
@@ -127,17 +129,18 @@ class KrakenWsTicker(BaseTicker):
         self.logger.info("WebSocket thread stopped.")
 
     def get_market_query(self) -> dict:
-        """Return latest cached prices in the same format as KrakenTicker.
+        """Return latest cached prices keyed by unified pair name.
 
-        Returns a dict keyed by REST pair name, with sub-dicts for c/a/b.
+        Returns a dict keyed by unified pair name (e.g. 'BTC-EUR'), with
+        sub-dicts for c/a/b (list format for KrakenTicker compatibility).
         Returns an empty dict if no data has been received yet.
         """
         with self._lock:
             result = {}
             for ws_pair, prices in self._prices.items():
-                rest_pair = _WS_TO_REST.get(ws_pair)
-                if rest_pair:
-                    result[rest_pair] = {
+                unified = _WS_TO_UNIFIED.get(ws_pair)
+                if unified:
+                    result[unified] = {
                         "c": [prices.get("c", 0.0)],
                         "a": [prices.get("a", 0.0)],
                         "b": [prices.get("b", 0.0)],

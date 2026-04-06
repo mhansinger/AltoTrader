@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 MOCK_YAML = os.path.join(os.path.dirname(__file__), "mock_data", "mock_pairs.yaml")
 
-PAIRS = ["BTCEUR", "ETHBTC"]
+PAIRS = ["BTC-EUR", "ETH-BTC"]
 
 
 def _yaml_with_pairs(tmp_path, pairs):
@@ -35,13 +35,19 @@ def _make_ticker(tmp_path, pairs=None):
     return BinanceWsTicker(pairs_yaml=yaml_path)
 
 
-def _ticker_msg(symbol: str, c: str, a: str, b: str) -> str:
-    """Build a valid combined-stream 24hrTicker message."""
+def _ticker_msg(unified_pair: str, c: str, a: str, b: str) -> str:
+    """Build a valid combined-stream 24hrTicker message.
+
+    Accepts the unified pair name (e.g. 'BTC-EUR') and converts it to the
+    Binance exchange symbol ('BTCEUR') for the 's' field, matching what the
+    real Binance WS API sends.
+    """
+    ex_sym = unified_pair.replace("-", "")   # BTC-EUR → BTCEUR
     return json.dumps({
-        "stream": f"{symbol.lower()}@ticker",
+        "stream": f"{ex_sym.lower()}@ticker",
         "data": {
             "e": "24hrTicker",
-            "s": symbol,
+            "s": ex_sym,   # Binance always sends uppercase, no-hyphen
             "c": c,
             "a": a,
             "b": b,
@@ -61,23 +67,23 @@ def test_get_market_query_empty_before_start(tmp_path):
 class TestOnMessageValid:
     def test_single_pair_stored(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
-        assert "BTCEUR" in ticker._prices
-        assert ticker._prices["BTCEUR"]["c"] == pytest.approx(60000.0)
-        assert ticker._prices["BTCEUR"]["a"] == pytest.approx(60010.0)
-        assert ticker._prices["BTCEUR"]["b"] == pytest.approx(59990.0)
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        assert "BTC-EUR" in ticker._prices
+        assert ticker._prices["BTC-EUR"]["c"] == pytest.approx(60000.0)
+        assert ticker._prices["BTC-EUR"]["a"] == pytest.approx(60010.0)
+        assert ticker._prices["BTC-EUR"]["b"] == pytest.approx(59990.0)
 
     def test_two_pairs_stored_independently(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
-        ticker._on_message(None, _ticker_msg("ETHBTC", "0.050", "0.0501", "0.0499"))
-        assert set(ticker._prices.keys()) == {"BTCEUR", "ETHBTC"}
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("ETH-BTC", "0.050", "0.0501", "0.0499"))
+        assert set(ticker._prices.keys()) == {"BTC-EUR", "ETH-BTC"}
 
     def test_price_updated_on_second_message(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
-        ticker._on_message(None, _ticker_msg("BTCEUR", "61000", "61010", "60990"))
-        assert ticker._prices["BTCEUR"]["c"] == pytest.approx(61000.0)
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "61000", "61010", "60990"))
+        assert ticker._prices["BTC-EUR"]["c"] == pytest.approx(61000.0)
 
 
 # ── _on_message – sanity/validation checks ────────────────────────────────────
@@ -85,14 +91,16 @@ class TestOnMessageValid:
 class TestOnMessageValidation:
     def test_unknown_symbol_ignored(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("XYZABC", "100", "101", "99"))
+        ticker._on_message(None, _ticker_msg("XYZ-ABC", "100", "101", "99"))
+        # Neither the unified nor the exchange-format key should be stored
+        assert "XYZ-ABC" not in ticker._prices
         assert "XYZABC" not in ticker._prices
 
     def test_wrong_event_type_ignored(self, tmp_path):
         ticker = _make_ticker(tmp_path)
         msg = json.dumps({
             "stream": "btceur@kline",
-            "data": {"e": "kline", "s": "BTCEUR", "c": "60000", "a": "60010", "b": "59990"},
+            "data": {"e": "kline", "s": "BTC-EUR", "c": "60000", "a": "60010", "b": "59990"},
         })
         ticker._on_message(None, msg)
         assert ticker._prices == {}
@@ -104,19 +112,19 @@ class TestOnMessageValidation:
 
     def test_non_positive_price_skipped(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "0", "60010", "59990"))
-        assert "BTCEUR" not in ticker._prices
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "0", "60010", "59990"))
+        assert "BTC-EUR" not in ticker._prices
 
     def test_negative_price_skipped(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "-1", "59990"))
-        assert "BTCEUR" not in ticker._prices
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "-1", "59990"))
+        assert "BTC-EUR" not in ticker._prices
 
     def test_crossed_market_skipped(self, tmp_path):
         """ask < bid is a crossed market – must be rejected."""
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "59900", "60100"))
-        assert "BTCEUR" not in ticker._prices
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "59900", "60100"))
+        assert "BTC-EUR" not in ticker._prices
 
     def test_malformed_json_does_not_raise(self, tmp_path):
         ticker = _make_ticker(tmp_path)
@@ -127,10 +135,10 @@ class TestOnMessageValidation:
         ticker = _make_ticker(tmp_path)
         msg = json.dumps({
             "stream": "btceur@ticker",
-            "data": {"e": "24hrTicker", "s": "BTCEUR", "c": "60000"},  # missing a, b
+            "data": {"e": "24hrTicker", "s": "BTC-EUR", "c": "60000"},  # missing a, b
         })
         ticker._on_message(None, msg)
-        assert "BTCEUR" not in ticker._prices
+        assert "BTC-EUR" not in ticker._prices
 
 
 # ── get_market_query after data ───────────────────────────────────────────────
@@ -138,22 +146,22 @@ class TestOnMessageValidation:
 class TestGetMarketQuery:
     def test_returns_snapshot_with_both_pairs(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
-        ticker._on_message(None, _ticker_msg("ETHBTC", "0.050", "0.0501", "0.0499"))
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("ETH-BTC", "0.050", "0.0501", "0.0499"))
         mq = ticker.get_market_query()
-        assert set(mq.keys()) == {"BTCEUR", "ETHBTC"}
+        assert set(mq.keys()) == {"BTC-EUR", "ETH-BTC"}
 
     def test_snapshot_is_a_copy(self, tmp_path):
         """Modifying the returned dict must not affect the internal cache."""
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
         mq = ticker.get_market_query()
-        mq["BTCEUR"]["c"] = 0.0
-        assert ticker._prices["BTCEUR"]["c"] == pytest.approx(60000.0)
+        mq["BTC-EUR"]["c"] = 0.0
+        assert ticker._prices["BTC-EUR"]["c"] == pytest.approx(60000.0)
 
     def test_timestamp_set_after_query(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
         ticker.get_market_query()
         assert ticker.timestamp_last_fetch is not None
 
@@ -163,25 +171,25 @@ class TestGetMarketQuery:
 class TestGetLastTicker:
     def _ticker_with_data(self, tmp_path):
         t = _make_ticker(tmp_path)
-        t._on_message(None, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
-        t._on_message(None, _ticker_msg("ETHBTC", "0.050", "0.0501", "0.0499"))
+        t._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        t._on_message(None, _ticker_msg("ETH-BTC", "0.050", "0.0501", "0.0499"))
         return t
 
     def test_close_price(self, tmp_path):
         ticker = self._ticker_with_data(tmp_path)
         df = ticker.get_last_ticker("c")
         assert isinstance(df, pd.DataFrame)
-        assert df["BTCEUR"].iloc[0] == pytest.approx(60000.0)
+        assert df["BTC-EUR"].iloc[0] == pytest.approx(60000.0)
 
     def test_ask_price(self, tmp_path):
         ticker = self._ticker_with_data(tmp_path)
         df = ticker.get_last_ticker("a")
-        assert df["BTCEUR"].iloc[0] == pytest.approx(60010.0)
+        assert df["BTC-EUR"].iloc[0] == pytest.approx(60010.0)
 
     def test_bid_price(self, tmp_path):
         ticker = self._ticker_with_data(tmp_path)
         df = ticker.get_last_ticker("b")
-        assert df["BTCEUR"].iloc[0] == pytest.approx(59990.0)
+        assert df["BTC-EUR"].iloc[0] == pytest.approx(59990.0)
 
     def test_shape(self, tmp_path):
         ticker = self._ticker_with_data(tmp_path)
@@ -208,14 +216,14 @@ def test_reconnect_triggered_when_session_too_old(tmp_path):
     mock_ws = MagicMock()
     # Pretend we've been connected for longer than the session limit
     ticker._connected_at = time.monotonic() - _MAX_SESSION_SEC - 1
-    ticker._on_message(mock_ws, _ticker_msg("BTCEUR", "60000", "60010", "59990"))
+    ticker._on_message(mock_ws, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
     mock_ws.close.assert_called_once()
 
 
 # ── WS URL construction ───────────────────────────────────────────────────────
 
 def test_ws_url_contains_all_streams(tmp_path):
-    ticker = _make_ticker(tmp_path, ["BTCEUR", "ETHBTC"])
+    ticker = _make_ticker(tmp_path, ["BTC-EUR", "ETH-BTC"])
     url = ticker._ws_url()
     assert "btceur@ticker" in url
     assert "ethbtc@ticker" in url
@@ -234,7 +242,7 @@ def test_concurrent_writes_do_not_raise(tmp_path):
             try:
                 ticker._on_message(
                     None,
-                    _ticker_msg("BTCEUR", "60000", "60010", "59990"),
+                    _ticker_msg("BTC-EUR", "60000", "60010", "59990"),
                 )
             except Exception as exc:
                 errors.append(exc)

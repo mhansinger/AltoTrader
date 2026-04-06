@@ -9,8 +9,8 @@ Both endpoints return data for all symbols when called without parameters,
 so we make only two requests per polling cycle regardless of how many pairs
 are configured.
 
-Pair format: ``BTCUSDT``, ``ETHBTC``, ``SOLUSDT`` …
-(MEXC uppercase, no separator – same convention as Binance)
+Pair format: ``BTC-USDT``, ``ETH-BTC``, ``SOL-USDT`` …
+(unified hyphen-separated format; converted to ``BTCUSDT`` internally)
 """
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ class MEXCTicker(RestBaseTicker):
 
     EXCHANGE = "mexc"
 
+    # _to_exchange_pair() inherited default: "BTC-USDT" → "BTCUSDT" ✓
+
     def get_market_query(self) -> Dict:
         """Fetch last price + best bid/ask for all configured pairs.
 
@@ -33,13 +35,15 @@ class MEXCTicker(RestBaseTicker):
         configured pair list.
 
         Returns:
-            Normalised dict ``{symbol: {c, a, b}}``.
+            Normalised dict ``{unified_pair: {c, a, b}}``.
         """
         try:
+            reverse = self._exchange_to_unified_map()  # BTCUSDT → BTC-USDT
+
             price_data = self._get(f"{_BASE_URL}/ticker/price")
             book_data  = self._get(f"{_BASE_URL}/ticker/bookTicker")
 
-            # Build lookup maps  {symbol → value}
+            # Build lookup maps  {exchange_symbol → value}
             price_map: Dict[str, float] = {}
             for item in (price_data if isinstance(price_data, list) else [price_data]):
                 price_map[item["symbol"]] = float(item["price"])
@@ -52,18 +56,18 @@ class MEXCTicker(RestBaseTicker):
                 }
 
             result: Dict = {}
-            for pair in self.pairs_list:
-                if pair not in price_map or pair not in book_map:
-                    self.logger.warning(f"MEXC: no data for pair '{pair}'")
+            for ex_sym, unified in reverse.items():
+                if ex_sym not in price_map or ex_sym not in book_map:
+                    self.logger.warning(f"MEXC: no data for pair '{unified}' ({ex_sym})")
                     continue
-                result[pair] = {
-                    "c": price_map[pair],
-                    "a": book_map[pair]["a"],
-                    "b": book_map[pair]["b"],
+                result[unified] = {
+                    "c": price_map[ex_sym],
+                    "a": book_map[ex_sym]["a"],
+                    "b": book_map[ex_sym]["b"],
                 }
                 self.logger.debug(
-                    f"{pair}: last={price_map[pair]} "
-                    f"ask={book_map[pair]['a']} bid={book_map[pair]['b']}"
+                    f"{unified}: last={price_map[ex_sym]} "
+                    f"ask={book_map[ex_sym]['a']} bid={book_map[ex_sym]['b']}"
                 )
 
             if result:

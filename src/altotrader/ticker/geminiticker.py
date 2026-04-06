@@ -3,8 +3,8 @@
 Uses the public ``/v1/pubticker/{symbol}`` endpoint – no authentication
 required.  One HTTP request is made per trading pair.
 
-Pair format: ``btceur``, ``ethusd``, ``ethbtc`` …
-(Gemini uses lowercase, no separator)
+Pair format: ``BTC-EUR``, ``ETH-USD``, ``ETH-BTC`` …
+(unified hyphen-separated format; converted to lowercase ``btceur`` internally)
 """
 from __future__ import annotations
 
@@ -20,19 +20,23 @@ class GeminiTicker(RestBaseTicker):
 
     EXCHANGE = "gemini"
 
+    def _to_exchange_pair(self, pair: str) -> str:
+        """Gemini uses lowercase, no-separator symbols: ``BTC-EUR`` → ``btceur``."""
+        return pair.replace("-", "").lower()
+
     def get_market_query(self) -> Dict:
         """Fetch ticker for every configured pair (one request each).
 
         Returns:
-            Normalised dict ``{symbol: {c, a, b}}``.
-            Keys preserve the original casing from ``pairs_yaml`` so the
-            caller doesn't need to know about Gemini's lowercase convention.
+            Normalised dict ``{unified_pair: {c, a, b}}``
+            (keys are the original YAML pair names, e.g. ``'BTC-EUR'``).
         """
         result: Dict = {}
 
         for pair in self.pairs_list:
             try:
-                data = self._get(f"{_BASE_URL}/pubticker/{pair.lower()}")
+                ex_sym = self._to_exchange_pair(pair)   # btceur
+                data   = self._get(f"{_BASE_URL}/pubticker/{ex_sym}")
                 result[pair] = {
                     "c": float(data["last"]),
                     "a": float(data["ask"]),
