@@ -1,53 +1,262 @@
 # AltoTrader
 
-**Automated trading on the kraken exchange**
+Automated crypto trading framework with support for multiple exchanges, InfluxDB data storage, and a look-ahead-bias-free backtesting engine.
 
-**Trained to inform you via Twitter on the latest trades**
+## Features
 
-## Introduction
-This is a trading bot to perform automated trading on the kraken exchange via [Kraken's API](https://www.kraken.com/help/api). The bot requires Python 3 and a module called ``krakenex``. You can simply install it by running:
+- **Multi-exchange support** – Kraken, Binance, Coinbase, Gemini, MEXC
+- **REST and WebSocket tickers** – polling or real-time streaming per exchange
+- **Unified pair format** – `BTC-EUR`, `ETH-BTC` across all exchanges
+- **InfluxDB v2 storage** – time-series database for market price data
+- **Backtesting engine** – MA crossover strategy with slippage, realistic fees, Sharpe ratio, drawdown analysis, grid search
+- **Docker Compose** – one-command deployment with InfluxDB dashboard
+- **Export / remote fetch** – pull historical data to CSV or Parquet
 
-``pip3 install krakenex``
+---
 
-The trading strategy is based on the intersection of rolling means with different window width. Which window width is the best  highly depends on the traded asset pairs and the current market situation. Therefore, no recommendation on the windows can be given.
+## Project Structure
 
+```
+AltoTrader/
+├── src/altotrader/
+│   ├── ticker/
+│   │   ├── baseticker.py          # Abstract base class
+│   │   ├── rest_base_ticker.py    # Shared REST base (get_last_ticker, _to_exchange_pair)
+│   │   ├── krakenticker.py        # Kraken REST
+│   │   ├── kraken_ws_ticker.py    # Kraken WebSocket
+│   │   ├── binanceticker.py       # Binance REST
+│   │   ├── binance_ws_ticker.py   # Binance WebSocket
+│   │   ├── coinbaseticker.py      # Coinbase Exchange REST
+│   │   ├── geminiticker.py        # Gemini REST
+│   │   └── mexcticker.py          # MEXC REST
+│   ├── database/
+│   │   ├── update_service.py      # Writes ticker data to InfluxDB
+│   │   └── export_prices.py       # Exports data to CSV/Parquet
+│   └── backtest/
+│       ├── dataloader.py          # Loads and resamples CSV exports
+│       └── backtest_engine.py     # MA crossover backtest + grid search
+├── Examples/
+│   ├── run_update_service.py      # Data collection entry point
+│   ├── fetch_from_remote.py       # Fetch data from remote InfluxDB
+│   ├── kraken_pairs.yaml
+│   ├── binance_pairs.yaml
+│   ├── coinbase_pairs.yaml
+│   ├── gemini_pairs.yaml
+│   └── mexc_pairs.yaml
+├── Dockerfile
+├── docker-compose.yml
+└── env/.env.example
+```
 
-## Step by Step
+---
 
-### 0. Kraken key
-The magic of automated trading will only work out for you if you have a kraken account with funding. If not, create a [Kraken](https://www.kraken.com/) account, transfer some coins and generate an API key with the necessary rights:
+## Installation
 
-``keykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykey
-secretsecretsecretsecretsecretsecretsecretsecretsecretsecretsecretsecretsecretsecretsecret``
+Requires Python ≥ 3.10.
 
-store the two keys in a file called ``kraken.key`` which you will need later.
+```bash
+git clone https://github.com/mhansinger/AltoTrader.git
+cd AltoTrader
+pip install .
+# Development extras (pytest, black …)
+pip install ".[dev]"
+```
 
+---
 
-### 1. Asset pair
-Decide which asset pair you would like to trade. In this example 'step by step' we assume you'd like to trade between Bitcoin and EUR, so the assets are:
-``
-asset1='XXBT'
-asset2='ZEUR'
-``
+## Pair Format
 
-### 2. Stream the market data
-For the computation of rolling mean averages the trader will need historical market data. Therefore you have to establish a data base with historical market prices. Inside your trading directory, let's assume you called it ``XXBTZEUR``, create another directory called:
-``XXBTZEUR_data``
+All exchanges use the unified **`BASE-QUOTE`** format:
 
-This name is important and must contain the traded asset pair in the begining, as the trading enginge will search for this particular directory. Copy the content of [Stream](https://github.com/mhansinger/AltoTrader/tree/master/Stream) into it. Modify ``Beispiel_stream.py`` according to your asset pairs and run it. It will request the current market price from kraken exchange every minute and update your data base ``XXBTZEUR_Series.csv``every 10 minutes. Of course you can adjust that in the code, too.
+```
+BTC-EUR   ETH-BTC   SOL-USDT   XRP-EUR
+```
 
-### 3. Do some backtesting
-Stream the market prices for some days (better: weeks) into your data base. You'll need to do a bit of backtesting now. Backtesting is crucial for the success of your trading strategy, as it provides you the best window widths to maximize your portfolio. However, this is only a good guess as all your knowledge is based on historical(!) data. There is absolutely no guarantee that the market will behave similarly in the future. So, repeat backtesting from time to time to verify your window widths, as in the end you want a care free life and be on the bright side of trader life, or not?
+Each ticker converts internally to the exchange-specific symbol:
 
-#### How to:
+| Exchange | Unified | Internal |
+|---|---|---|
+| Binance / MEXC | `BTC-EUR` | `BTCEUR` |
+| Coinbase | `BTC-EUR` | `BTC-EUR` |
+| Gemini | `BTC-EUR` | `btceur` |
+| Kraken REST | `BTC-EUR` | `XXBTZEUR` |
+| Kraken WS | `BTC-EUR` | `XBT/EUR` |
 
-### 4. Set up the trading engine
-Open another terminal and copy the Python files from [Trade_Algo](https://github.com/mhansinger/AltoTrader/tree/master/Trade_Algo) into your trading directory (e.g. ``XXBTZEUR``). Copy also the ``kraken.key`` into this directory.
-Have a look into the ``main.py`` file, change for the correct asset pairs and adjust the ``short`` and ``long`` window width in:
+---
 
-``XXBT_input = set_input(asset1='XXBT', asset2='ZEUR', long=100, short=47)``
-Be sure to have somehow 'good' values for the windows, otherwise the trader will burn your coins easily.
+## Configuration
 
-That's on your OWN RISK.
+Copy `env/.env.example` to `.env` and fill in your values:
 
-### 4. (Optional) Set up Twitter engine
+```bash
+cp env/.env.example .env
+```
+
+```dotenv
+INFLUXDB_INIT_BUCKET=altotrader
+INFLUXDB_INIT_ORG=myorg
+INFLUXDB_INIT_ADMIN_TOKEN=your-token-here
+INFLUXDB_INIT_PASSWORD=your-password
+INFLUX_URL=http://localhost:8086
+```
+
+---
+
+## Data Streaming
+
+### REST polling (default)
+
+```bash
+python Examples/run_update_service.py --mode rest
+```
+
+### WebSocket (Kraken or Binance)
+
+```bash
+# Kraken WebSocket
+python Examples/run_update_service.py --mode websocket
+
+# Binance WebSocket (edit run_update_service.py to swap ticker)
+```
+
+### Selecting an exchange
+
+Edit `Examples/run_update_service.py` (or pass `--mode`) and swap the ticker:
+
+```python
+from altotrader.ticker.binanceticker      import BinanceTicker
+from altotrader.ticker.binance_ws_ticker  import BinanceWsTicker
+from altotrader.ticker.coinbaseticker     import CoinbaseTicker
+from altotrader.ticker.geminiticker       import GeminiTicker
+from altotrader.ticker.mexcticker         import MEXCTicker
+from altotrader.ticker.krakenticker       import KrakenTicker
+from altotrader.ticker.kraken_ws_ticker   import KrakenWsTicker
+
+ticker = BinanceTicker(pairs_yaml="Examples/binance_pairs.yaml")
+service = TickerUpdateService(ticker)
+```
+
+All tickers are drop-in replacements – `TickerUpdateService` works with any of them.
+
+### Pairs YAML
+
+```yaml
+# Examples/binance_pairs.yaml
+items:
+  - BTC-EUR
+  - ETH-EUR
+  - ETH-BTC
+```
+
+---
+
+## Docker Deployment
+
+Build and start InfluxDB + the streaming service:
+
+```bash
+docker compose up --build -d
+```
+
+The InfluxDB dashboard is available at **http://localhost:8086** (or your server's IP).
+
+To use a different exchange, set the `MODE` environment variable:
+
+```bash
+MODE=websocket docker compose up -d
+```
+
+---
+
+## Backtesting
+
+### Quick start
+
+```python
+from altotrader.backtest.dataloader     import DataLoader
+from altotrader.backtest.backtest_engine import BacktestEngine
+
+loader_config = {
+    "export_path": "Examples/ticker_export",
+    "latest_days": 20,
+    "logs_dir":    "logs",
+}
+backtest_config = {
+    "maker_fee":        0.0025,
+    "taker_fee":        0.004,
+    "slippage_pct":     0.0005,   # 0.05 % slippage on each side
+    "initial_invest":   1000,
+    "base_currency":    "ZEUR",
+    "trading_currency": "XXBT",
+}
+
+loader  = DataLoader(loader_config)
+backtest = BacktestEngine(loader, backtest_config)
+metrics  = backtest.run(window_short=50, window_long=200)
+print(metrics)
+```
+
+### Key metrics returned
+
+| Key | Description |
+|---|---|
+| `total_return_pct` | Strategy return vs initial invest |
+| `buy_and_hold_return_pct` | Passive benchmark |
+| `n_trades` | Number of completed round-trips |
+| `win_rate` | % of profitable trades |
+| `max_drawdown_pct` | Maximum peak-to-trough loss |
+| `max_drawdown_duration_hrs` | Longest drawdown period (hours) |
+| `sharpe_ratio` | Annualised Sharpe (daily returns × √365) |
+| `total_fees` / `taker_fees` / `maker_fees` | Fee breakdown |
+| `final_portfolio_value` | End portfolio value |
+
+### Grid search
+
+```python
+from altotrader.backtest.backtest_engine import run_grid_search
+
+results = run_grid_search(
+    backtest,
+    short_windows=[20, 50, 100],
+    long_windows=[100, 200, 500],
+)
+print(results[["window_short", "window_long", "total_return_pct", "sharpe_ratio"]].head())
+```
+
+### Visualisation
+
+```python
+backtest.plot_results(show=True, save_path="backtest.png")
+```
+
+---
+
+## Exporting Data
+
+Export data from a local or remote InfluxDB to CSV or Parquet:
+
+```bash
+python Examples/fetch_from_remote.py \
+    --url   http://my-server:8086 \
+    --token $INFLUXDB_INIT_ADMIN_TOKEN \
+    --org   myorg \
+    --bucket altotrader \
+    --days  30 \
+    --out   data/export.csv
+```
+
+---
+
+## Tests
+
+```bash
+python -m pytest
+```
+
+100 tests, 2 skipped (Kraken build-environment guard in CI).
+
+---
+
+## Disclaimer
+
+This software is for educational purposes only. Automated trading carries significant financial risk. Past backtesting performance does not guarantee future results. Use at your own risk.
