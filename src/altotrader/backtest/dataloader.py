@@ -29,30 +29,88 @@ class DataLoader:
 
         # TODO: update config
 
-    def load_csv_export(self) -> pd.DataFrame:
-        """reads in CSV exports for ask, bid, current price"""
+    def load_csv_export(self) -> None:
+        """Load CSV exports for ask, bid, and current price.
+
+        Supports two config modes:
+
+        **Single source** (backward compatible)::
+
+            {
+                "export_path": "exports/kraken",
+                "file_prefix": "kraken",   # default: "krakenticker"
+                "latest_days": 30,
+            }
+
+        **Multiple sources** – useful when streaming from different exchange
+        buckets.  All sources are loaded and merged column-wise (outer join
+        on the time index, then NaN-interpolated)::
+
+            {
+                "export_sources": [
+                    {"export_path": "exports/kraken",  "file_prefix": "kraken",  "latest_days": 30},
+                    {"export_path": "exports/binance", "file_prefix": "binance", "latest_days": 30},
+                ],
+            }
+        """
         self.logger.info('loading exported csv files')
 
-        export_path = self.config_dict.get('export_path')
-        days = self.config_dict.get('latest_days')
-        # Optional prefix override; defaults to 'krakenticker' for backward compat
-        prefix = self.config_dict.get('file_prefix', 'krakenticker')
+        # Build a list of (export_path, prefix, days) tuples
+        sources = self.config_dict.get('export_sources')
+        if sources:
+            # Multi-source mode
+            source_list = [
+                (s['export_path'],
+                 s.get('file_prefix', 'krakenticker'),
+                 s.get('latest_days', self.config_dict.get('latest_days', 30)))
+                for s in sources
+            ]
+        else:
+            # Single-source mode (backward compatible)
+            source_list = [(
+                self.config_dict.get('export_path'),
+                self.config_dict.get('file_prefix', 'krakenticker'),
+                self.config_dict.get('latest_days', 30),
+            )]
 
-        def load_and_resample(suffix: str) -> pd.DataFrame:
-            path = join(
-                export_path, f"{prefix}_latest_{days}d_{suffix}.csv")
+        def load_source(export_path: str, prefix: str, days: int, suffix: str) -> pd.DataFrame:
+            path = join(export_path, f"{prefix}_latest_{days}d_{suffix}.csv")
             self.logger.debug(f"Loading: {path}")
-            df = pd.read_csv(path, index_col="timestamp",
-                             parse_dates=["timestamp"])
+            df = pd.read_csv(path, index_col="timestamp", parse_dates=["timestamp"])
             df = df.sort_index()
             if 'ticker_entry' in df.columns:
                 df = df.drop('ticker_entry', axis=1)
-
             return df.resample("1min").mean()
 
-        self.ticker_ask = load_and_resample("a")
-        self.ticker_bid = load_and_resample("b")
-        self.ticker_current = load_and_resample("c")
+        def load_and_merge(suffix: str) -> pd.DataFrame:
+            frames = []
+            for export_path, prefix, days in source_list:
+                try:
+                    frames.append(load_source(export_path, prefix, days, suffix))
+                except FileNotFoundError as e:
+                    self.logger.warning(f"File not found, skipping source: {e}")
+            if not frames:
+                raise RuntimeError(
+                    f"No CSV files could be loaded for suffix '{suffix}'. "
+                    "Check export_path and file_prefix in your config."
+                )
+            if len(frames) == 1:
+                return frames[0]
+            # Outer-join on time index; duplicate pair columns are averaged
+            combined = pd.concat(frames, axis=1)
+            # Group duplicate column names and take the mean
+            merged = combined.T.groupby(level=0).mean().T
+            n_sources = len(frames)
+            n_pairs   = len(merged.columns)
+            self.logger.info(
+                f"Merged {n_sources} source(s) for suffix='{suffix}': "
+                f"{n_pairs} unique pair(s) total"
+            )
+            return merged
+
+        self.ticker_ask     = load_and_merge("a")
+        self.ticker_bid     = load_and_merge("b")
+        self.ticker_current = load_and_merge("c")
 
         # fill NaN if any
         self.ticker_ask = self._iterpolate_nan(self.ticker_ask)
