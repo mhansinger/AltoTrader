@@ -98,6 +98,61 @@ class DataLoader:
 
         return df
 
+    def check_gaps(self, expected_freq: str = "1min", warn_threshold: int = 5) -> dict:
+        """Detect time-series gaps in the loaded ticker data.
+
+        A gap is any interval between consecutive timestamps that is larger
+        than *expected_freq*.  This is useful to detect periods where the
+        data streaming service was down.
+
+        Args:
+            expected_freq:   Expected minimum interval between rows, as a
+                             pandas offset string (default: '1min').
+            warn_threshold:  Log a WARNING (instead of DEBUG) for gaps longer
+                             than this many multiples of *expected_freq*.
+
+        Returns:
+            dict with keys 'current', 'ask', 'bid', each containing a list of
+            (start_timestamp, end_timestamp, gap_minutes) tuples.
+
+        Raises:
+            RuntimeError: if load_csv_export() has not been called yet.
+        """
+        if self.ticker_current is None:
+            raise RuntimeError("No data loaded – call load_csv_export() first.")
+
+        freq_td = pd.tseries.frequencies.to_offset(expected_freq)
+        results = {}
+
+        for name, df in [("current", self.ticker_current),
+                          ("ask",     self.ticker_ask),
+                          ("bid",     self.ticker_bid)]:
+            gaps = []
+            idx = df.index
+            deltas = idx[1:] - idx[:-1]
+            for i, delta in enumerate(deltas):
+                if delta > freq_td:
+                    gap_mins = delta.total_seconds() / 60
+                    entry = (idx[i], idx[i + 1], round(gap_mins, 1))
+                    gaps.append(entry)
+                    multiples = delta / freq_td
+                    msg = (
+                        f"Gap in {name!r} data: {idx[i]} → {idx[i+1]} "
+                        f"({gap_mins:.1f} min)"
+                    )
+                    if multiples >= warn_threshold:
+                        self.logger.warning(msg)
+                    else:
+                        self.logger.debug(msg)
+
+            results[name] = gaps
+            self.logger.info(
+                f"Gap check [{name}]: {len(gaps)} gap(s) found "
+                f"(threshold: {expected_freq})"
+            )
+
+        return results
+
     @property
     def window_long(self):
         return self._window_long

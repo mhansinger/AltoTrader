@@ -1,6 +1,7 @@
 import pandas as pd
+import time
 from influxdb_client import InfluxDBClient
-from influxdb_client.client.query_api import QueryApi
+from influxdb_client.client.exceptions import InfluxDBError
 from altotrader.logging_config import setup_logging
 
 import os
@@ -9,9 +10,10 @@ import logging
 from typing import Optional
 
 setup_logging(log_filename='export_prices.logs')
-
-# Create a logger for this module
 logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 4
+_RETRY_BASE_DELAY = 2  # seconds (doubles each attempt: 2, 4, 8, 16)
 
 
 def export_prices(path_to_parquet: str,
@@ -22,65 +24,102 @@ def export_prices(path_to_parquet: str,
                   url: Optional[str] = None,
                   token: Optional[str] = None) -> bool:
     """Export latest prices from InfluxDB to parquet or csv.
+
+    Retries each ticker entry up to _MAX_RETRIES times with exponential backoff
+    on transient InfluxDB or network errors.
     """
 
     influx_config = {
         "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
-        "org": org or os.getenv("INFLUXDB_INIT_ORG"),
-        "url": url or os.getenv("INFLUX_URL"),
-        "token": token or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN")
+        "org":    org    or os.getenv("INFLUXDB_INIT_ORG"),
+        "url":    url    or os.getenv("INFLUX_URL"),
+        "token":  token  or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN"),
     }
+
+    missing = [k for k, v in influx_config.items() if not v]
+    if missing:
+        logger.error(f"Missing InfluxDB configuration: {', '.join(missing)}")
+        return False
 
     ticker_entries = ['a', 'b', 'c']  # ask, bid, current
 
     for ticker in ticker_entries:
+        df_pivot = _query_with_retry(ticker, days_into_past, influx_config)
+        if df_pivot is None:
+            return False
+
+        filename = (
+            f"{influx_config['bucket']}_latest_{days_into_past}d_{ticker}.{file_format}"
+        )
+        filepath = join(path_to_parquet, filename)
         try:
-
-            # Initialize InfluxDB client
-            client = InfluxDBClient(
-                url=influx_config.get('url'), token=influx_config.get('token'), org=influx_config.get('org'))
-
-            query_api = client.query_api()
-
-            query = f'''
-            from(bucket: "{influx_config.get('bucket')}")
-            |> range(start: -{days_into_past}d)
-            |> filter(fn: (r) => r["_measurement"] == "kraken") 
-            |> filter(fn: (r) => r["_field"] == "price")
-            |> filter(fn: (r) => r["ticker_entry"] == "{ticker}")
-            '''
-
-            result = query_api.query(query)
-
-            client.close()
-
-            data = []
-            for table in result:
-                for record in table.records:
-                    data.append(record.values)
-
-            df = pd.DataFrame(data)
-
-            df['timestamp'] = pd.to_datetime(df['_time']).dt.floor('s')
-
-            # Reshape DataFrame to have pairs as columns and prices as values
-            df_pivot = df.pivot_table(
-                index=['timestamp', 'ticker_entry'], columns='pair', values='_value')
-
-            filename = f"{influx_config.get('bucket')}_latest_{days_into_past}d_{ticker}.{file_format}"
             if file_format == 'csv':
-                df_pivot.to_csv(join(path_to_parquet, filename))
+                df_pivot.to_csv(filepath)
             elif file_format == 'parquet':
-                df_pivot.to_parquet(join(path_to_parquet, filename))
+                df_pivot.to_parquet(filepath)
             else:
-                logger.error(f"file format {file_format} not known!")
+                logger.error(f"Unknown file format: {file_format!r}")
                 return False
-
+            logger.info(f"Exported {ticker!r} → {filepath}")
         except Exception as e:
-            logger.error(f"Error in export process: {e} and ticker {ticker}")
+            logger.error(f"Failed to write {filepath}: {e}")
             return False
 
     return True
+
+
+def _query_with_retry(ticker: str, days_into_past: int, influx_config: dict):
+    """Query InfluxDB for a single ticker entry with exponential-backoff retry.
+
+    Returns a pivoted DataFrame on success, or None after all retries fail.
+    """
+    delay = _RETRY_BASE_DELAY
+    query = f'''
+        from(bucket: "{influx_config['bucket']}")
+        |> range(start: -{days_into_past}d)
+        |> filter(fn: (r) => r["_measurement"] == "kraken")
+        |> filter(fn: (r) => r["_field"] == "price")
+        |> filter(fn: (r) => r["ticker_entry"] == "{ticker}")
+    '''
+
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            with InfluxDBClient(
+                url=influx_config['url'],
+                token=influx_config['token'],
+                org=influx_config['org'],
+                timeout=30_000,
+            ) as client:
+                result = client.query_api().query(query)
+
+            data = [record.values for table in result for record in table.records]
+            if not data:
+                logger.warning(f"No data returned for ticker_entry={ticker!r}")
+                return pd.DataFrame()
+
+            df = pd.DataFrame(data)
+            df['timestamp'] = pd.to_datetime(df['_time']).dt.floor('s')
+            return df.pivot_table(
+                index=['timestamp', 'ticker_entry'],
+                columns='pair',
+                values='_value',
+            )
+
+        except (InfluxDBError, Exception) as e:
+            if attempt < _MAX_RETRIES:
+                logger.warning(
+                    f"Export query failed for ticker={ticker!r} "
+                    f"(attempt {attempt}/{_MAX_RETRIES}): {e}. "
+                    f"Retrying in {delay}s..."
+                )
+                time.sleep(delay)
+                delay *= 2
+            else:
+                logger.error(
+                    f"Export query failed for ticker={ticker!r} "
+                    f"after {_MAX_RETRIES} attempts: {e}"
+                )
+                return None
 
 
 if __name__ == '__main__':

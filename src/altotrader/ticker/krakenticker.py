@@ -35,7 +35,7 @@ class KrakenTicker(BaseTicker):
             self.timestamp_last_fetch = self.current_timestamp()
             return response.get("result", {})
         except Exception as e:
-            print(f"Error fetching market result: {e}")
+            self.logger.error(f"Error fetching market result: {e}")
             return {}
 
     def get_last_ticker(self, ticker_entry: str, market_query: dict = None) -> pd.DataFrame:
