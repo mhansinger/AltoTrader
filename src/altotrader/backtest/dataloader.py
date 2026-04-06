@@ -188,8 +188,12 @@ class DataLoader:
 
 if __name__ == '__main__':
 
-    my_dict = {'export_path': "Examples/ticker_export",
-               "latest_days": 20, "logs_dir": 'logs'}
+    my_dict = {
+        'export_path': "Examples/ticker_export",
+        "latest_days": 20,
+        "file_prefix": "altotrader",  # must match InfluxDB bucket name
+        "logs_dir":    'logs',
+    }
     testloader = DataLoader(my_dict)
     testloader.load_csv_export()
     testloader.compute_rolling_means(window_short=50, window_long=200)

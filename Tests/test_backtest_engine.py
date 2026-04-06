@@ -30,9 +30,9 @@ class _MockDataLoader:
             f"{window_long}min").mean()
 
 
-PAIR = "XXBTZEUR"
-BASE = "ZEUR"
-TRADING = "XXBT"
+BASE    = "EUR"
+TRADING = "BTC"
+PAIR    = f"{TRADING}-{BASE}"   # "BTC-EUR"
 
 BACKTEST_CONFIG = {
     "maker_fee":        0.0025,

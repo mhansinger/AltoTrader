@@ -186,8 +186,8 @@ backtest_config = {
     "taker_fee":        0.004,
     "slippage_pct":     0.0005,   # 0.05 % slippage on each side
     "initial_invest":   1000,
-    "base_currency":    "ZEUR",
-    "trading_currency": "XXBT",
+    "base_currency":    "EUR",    # pair will be constructed as "BTC-EUR"
+    "trading_currency": "BTC",
 }
 
 loader  = DataLoader(loader_config)
