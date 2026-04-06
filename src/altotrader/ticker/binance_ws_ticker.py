@@ -46,9 +46,10 @@ Or as a context manager::
 
 Pair format
 -----------
-Pairs in the YAML file must use Binance's uppercase convention (e.g.
-``BTCEUR``, ``ETHBTC``, ``SOLUSDT``).  The ticker converts them to
-lowercase stream names internally.
+Pairs in the YAML file use the unified hyphen-separated convention (e.g.
+``BTC-EUR``, ``ETH-BTC``, ``SOL-USDT``).  The ticker converts them to
+Binance's exchange symbols (``BTCEUR``) and lowercase stream names
+(``btceur@ticker``) internally.
 """
 from __future__ import annotations
 
@@ -92,8 +93,12 @@ class BinanceWsTicker(RestBaseTicker):
         self._stop_event   = threading.Event()
         self._connected_at: Optional[float] = None  # monotonic time
 
-        # Binance stream names are lowercase (e.g. "btceur@ticker")
-        self._stream_names = [f"{p.lower()}@ticker" for p in self.pairs_list]
+        # Reverse map: exchange symbol (uppercase, no hyphen) → unified pair
+        # e.g. "BTCEUR" → "BTC-EUR"
+        self._ex_to_unified = {p.replace("-", ""): p for p in self.pairs_list}
+
+        # WS stream names are lowercase with no separator (e.g. "btceur@ticker")
+        self._stream_names = [f"{p.replace('-', '').lower()}@ticker" for p in self.pairs_list]
 
         self.logger.info(
             f"BinanceWsTicker initialised | streams: {self._stream_names}"
@@ -221,8 +226,9 @@ class BinanceWsTicker(RestBaseTicker):
             if tick.get("e") != "24hrTicker":
                 return
 
-            symbol = tick.get("s", "")
-            if symbol not in self.pairs_list:
+            ex_symbol = tick.get("s", "")           # e.g. "BTCEUR"
+            symbol    = self._ex_to_unified.get(ex_symbol)  # → "BTC-EUR"
+            if symbol is None:
                 return
 
             # Parse the three price fields

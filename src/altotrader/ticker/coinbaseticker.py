@@ -4,7 +4,7 @@ Uses the public ``/products/{product_id}/ticker`` endpoint – no authentication
 required.  One HTTP request is made per trading pair.
 
 Pair format: ``BTC-EUR``, ``ETH-BTC``, ``SOL-USD`` …
-(Coinbase hyphen-separated convention)
+(Coinbase already uses hyphen-separated pairs, so no conversion is needed)
 """
 from __future__ import annotations
 
@@ -20,11 +20,15 @@ class CoinbaseTicker(RestBaseTicker):
 
     EXCHANGE = "coinbase"
 
+    def _to_exchange_pair(self, pair: str) -> str:
+        """Coinbase natively uses the unified 'BTC-EUR' format – no conversion."""
+        return pair
+
     def get_market_query(self) -> Dict:
         """Fetch ticker for every configured pair (one request each).
 
         Returns:
-            Normalised dict ``{symbol: {c, a, b}}``.
+            Normalised dict ``{unified_pair: {c, a, b}}``.
         """
         result: Dict = {}
 
@@ -36,7 +40,9 @@ class CoinbaseTicker(RestBaseTicker):
                     "a": float(data["ask"]),
                     "b": float(data["bid"]),
                 }
-                self.logger.debug(f"{pair}: last={data['price']} ask={data['ask']} bid={data['bid']}")
+                self.logger.debug(
+                    f"{pair}: last={data['price']} ask={data['ask']} bid={data['bid']}"
+                )
             except Exception as exc:
                 self.logger.warning(f"Coinbase fetch failed for '{pair}': {exc}")
 

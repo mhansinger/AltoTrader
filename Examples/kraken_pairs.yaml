@@ -1,10 +1,9 @@
 items:
-  - XETHZEUR
-  - XXBTZEUR
-  - XETHXXBT
-  - SOLXBT
-  - ADAXBT
-  - LINKXBT
-  - XXRPXXBT
-  - DOTXBT
-  
+  - ETH-EUR
+  - BTC-EUR
+  - ETH-BTC
+  - SOL-BTC
+  - ADA-BTC
+  - LINK-BTC
+  - XRP-BTC
+  - DOT-BTC

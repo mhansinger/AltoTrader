@@ -50,6 +50,25 @@ class RestBaseTicker(BaseTicker):
             f"Initialised {self.EXCHANGE}Ticker with pairs: {self.pairs_list}"
         )
 
+    # ── Pair-format conversion ────────────────────────────────────────────────
+
+    def _to_exchange_pair(self, pair: str) -> str:
+        """Convert the unified ``'BTC-EUR'`` format to the exchange-specific symbol.
+
+        The default implementation strips the hyphen separator (``'BTC-EUR'``
+        → ``'BTCEUR'``), which works for Binance and MEXC.  Override in
+        subclasses that use a different convention.
+        """
+        return pair.replace("-", "")
+
+    def _exchange_to_unified_map(self) -> Dict[str, str]:
+        """Return ``{exchange_symbol: unified_pair}`` for all configured pairs.
+
+        Useful for translating API responses back to the canonical pair name
+        used in the YAML file.
+        """
+        return {self._to_exchange_pair(p): p for p in self.pairs_list}
+
     # ── HTTP helper ────────────────────────────────────────────────────────────
 
     def _get(self, url: str, **kwargs) -> dict | list:
