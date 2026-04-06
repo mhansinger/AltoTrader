@@ -129,6 +129,88 @@ class TestComputeRollingMeans:
 
 # ── _iterpolate_nan ───────────────────────────────────────────────────────────
 
+class TestMultiSource:
+    """DataLoader with export_sources list (multiple exchange buckets)."""
+
+    def _make_source(self, tmp_dir, prefix, pair, n_rows=50):
+        """Write CSV files for one exchange bucket into tmp_dir."""
+        dates  = pd.date_range("2025-01-01", periods=n_rows, freq="1min")
+        prices = np.linspace(40_000, 42_000, n_rows)
+        os.makedirs(tmp_dir, exist_ok=True)
+        for suffix, mult in [("a", 1.001), ("b", 0.999), ("c", 1.0)]:
+            df = pd.DataFrame({pair: prices * mult}, index=dates)
+            df.index.name = "timestamp"
+            df.to_csv(os.path.join(tmp_dir, f"{prefix}_latest_20d_{suffix}.csv"))
+
+    def test_loads_two_sources_and_merges_columns(self, tmp_path):
+        kraken_dir  = str(tmp_path / "kraken")
+        binance_dir = str(tmp_path / "binance")
+        self._make_source(kraken_dir,  "kraken",  "BTC-EUR")
+        self._make_source(binance_dir, "binance", "ETH-BTC")
+
+        config = {
+            "export_sources": [
+                {"export_path": kraken_dir,  "file_prefix": "kraken",  "latest_days": 20},
+                {"export_path": binance_dir, "file_prefix": "binance", "latest_days": 20},
+            ],
+            "logs_dir": str(tmp_path),
+        }
+        loader = DataLoader(config)
+        loader.load_csv_export()
+
+        # Both pairs must appear as columns
+        assert "BTC-EUR" in loader.ticker_current.columns
+        assert "ETH-BTC" in loader.ticker_current.columns
+
+    def test_same_pair_two_sources_combined(self, tmp_path):
+        """Two sources with the same pair – columns deduplicated by pandas join."""
+        dir_a = str(tmp_path / "a")
+        dir_b = str(tmp_path / "b")
+        self._make_source(dir_a, "src_a", "BTC-EUR")
+        self._make_source(dir_b, "src_b", "BTC-EUR")
+
+        config = {
+            "export_sources": [
+                {"export_path": dir_a, "file_prefix": "src_a", "latest_days": 20},
+                {"export_path": dir_b, "file_prefix": "src_b", "latest_days": 20},
+            ],
+            "logs_dir": str(tmp_path),
+        }
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert loader.ticker_current is not None
+
+    def test_missing_source_warns_but_loads_rest(self, tmp_path):
+        """A missing file in one source should not crash – others still load."""
+        good_dir = str(tmp_path / "good")
+        self._make_source(good_dir, "good", "BTC-EUR")
+
+        config = {
+            "export_sources": [
+                {"export_path": good_dir,              "file_prefix": "good",    "latest_days": 20},
+                {"export_path": str(tmp_path / "bad"), "file_prefix": "missing", "latest_days": 20},
+            ],
+            "logs_dir": str(tmp_path),
+        }
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert "BTC-EUR" in loader.ticker_current.columns
+
+    def test_single_source_via_export_sources(self, tmp_path):
+        """export_sources with one entry behaves identically to single-source mode."""
+        d = str(tmp_path / "kraken")
+        self._make_source(d, "kraken", "BTC-EUR")
+        config = {
+            "export_sources": [
+                {"export_path": d, "file_prefix": "kraken", "latest_days": 20},
+            ],
+            "logs_dir": str(tmp_path),
+        }
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert "BTC-EUR" in loader.ticker_current.columns
+
+
 class TestInterpolateNan:
     def test_interpolates_missing_values(self, tmp_path):
         config = _make_csv_files(str(tmp_path))

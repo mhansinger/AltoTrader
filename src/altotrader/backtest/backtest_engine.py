@@ -16,7 +16,8 @@ class BacktestEngine:
         self.initial_invest = backtest_config.get('initial_invest', 1000)
         self.trading_currency = backtest_config.get("trading_currency")
         self.base_currency    = backtest_config.get("base_currency")
-        self.pair = self.trading_currency + self.base_currency
+        # Unified pair format: "BTC-EUR", matching exported CSV column names
+        self.pair = f"{self.trading_currency}-{self.base_currency}"
         # Slippage applied on top of ask/bid spread (0.0005 = 0.05%)
         self.slippage_pct = backtest_config.get('slippage_pct', 0.0005)
 
@@ -458,17 +459,21 @@ def run_grid_search(
 
 
 if __name__ == '__main__':
-    loader_dict = {'export_path': "Examples/ticker_export",
-                   "latest_days": 20, "logs_dir": 'logs'}
+    loader_dict = {
+        'export_path': "Examples/ticker_export",
+        "latest_days": 20,
+        "file_prefix": "altotrader",  # must match InfluxDB bucket name
+        "logs_dir":    'logs',
+    }
     testloader = DataLoader(loader_dict)
 
     backtest_config = {
-        "maker_fee":    0.0025,
-        "taker_fee":    0.004,
-        "slippage_pct": 0.0005,
-        "initial_invest": 1000,
-        "base_currency":    "ZEUR",
-        "trading_currency": "XXBT",
+        "maker_fee":        0.0025,
+        "taker_fee":        0.004,
+        "slippage_pct":     0.0005,
+        "initial_invest":   1000,
+        "base_currency":    "EUR",   # pair will be "BTC-EUR"
+        "trading_currency": "BTC",
     }
 
     backtest = BacktestEngine(testloader, backtest_config)
