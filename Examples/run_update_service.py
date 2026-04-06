@@ -1,63 +1,64 @@
-"""Robust polling loop for the AltoTrader data streaming service.
+"""Robust data streaming service for AltoTrader.
 
-Fetches Kraken ticker prices every POLL_INTERVAL_SECONDS and writes them to
-InfluxDB. Handles network outages and API errors gracefully:
+Supports two modes (select via --mode flag or MODE env var):
 
+  rest (default)
+      Polls the Kraken REST API every POLL_INTERVAL_SECONDS and writes results
+      to InfluxDB.  Simpler, no extra dependencies.
+
+  websocket
+      Connects to the Kraken WebSocket API for real-time tick data, then
+      writes the latest snapshot to InfluxDB every POLL_INTERVAL_SECONDS.
+      Requires: pip install websocket-client
+
+Both modes handle failures gracefully:
   - Consecutive failures trigger increasing back-off (up to MAX_BACKOFF_SECONDS)
-  - A summary of success/failure counts is logged every HEARTBEAT_INTERVAL cycles
+  - A heartbeat is logged every HEARTBEAT_INTERVAL cycles
   - SIGINT / SIGTERM shut the loop down cleanly
 
 Usage:
-    python Examples/run_update_service.py
+    python Examples/run_update_service.py                # REST mode (default)
+    python Examples/run_update_service.py --mode websocket
+    python Examples/run_update_service.py --pairs Examples/kraken_pairs.yaml
 
-Environment variables (see env/ for a template):
+Environment variables (see env/.env.example):
     INFLUXDB_INIT_BUCKET, INFLUXDB_INIT_ORG, INFLUX_URL, INFLUXDB_INIT_ADMIN_TOKEN
+    MODE=websocket   (alternative to --mode flag)
 """
 
+import argparse
+import logging
+import os
 import signal
 import sys
 import time
-import logging
 
 from altotrader.database.update_service import TickerUpdateService
-from altotrader.ticker.krakenticker import KrakenTicker
 from altotrader.logging_config import setup_logging
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-POLL_INTERVAL_SECONDS = 60       # how often to fetch & write prices
-MAX_BACKOFF_SECONDS = 300        # cap for back-off on consecutive failures
-HEARTBEAT_INTERVAL = 10          # log a heartbeat every N successful cycles
+# ── Configuration ──────────────────────────────────────────────────────────────
+POLL_INTERVAL_SECONDS = 60    # write to InfluxDB every N seconds
+MAX_BACKOFF_SECONDS   = 300   # cap for exponential back-off on failures
+HEARTBEAT_INTERVAL    = 10    # log heartbeat every N cycles
 PAIRS_YAML = "Examples/kraken_pairs.yaml"
-LOG_DIR = "logs"
-# ──────────────────────────────────────────────────────────────────────────────
+LOG_DIR    = "logs"
+# ───────────────────────────────────────────────────────────────────────────────
 
 
 def _make_shutdown_handler(stop_flag: list):
-    """Returns a signal handler that sets stop_flag[0] = True."""
     def handler(signum, frame):
         logging.getLogger(__name__).info(
-            f"Received signal {signum}, shutting down gracefully...")
+            f"Received signal {signum} – shutting down gracefully …"
+        )
         stop_flag[0] = True
     return handler
 
 
-def run_update(pair_yaml: str = PAIRS_YAML):
-    setup_logging(log_filename='run_update_service.logs', log_dir=LOG_DIR)
+def _polling_loop(service: TickerUpdateService, stop_flag: list):
+    """Main write loop shared by both REST and WS modes."""
     logger = logging.getLogger(__name__)
-
-    ticker = KrakenTicker(pairs_yaml=pair_yaml, log_dir=LOG_DIR)
-    service = TickerUpdateService(ticker, log_dir=LOG_DIR)
-
-    stop_flag = [False]
-    signal.signal(signal.SIGINT, _make_shutdown_handler(stop_flag))
-    signal.signal(signal.SIGTERM, _make_shutdown_handler(stop_flag))
-
     consecutive_failures = 0
-    total_success = 0
-    total_failure = 0
-    cycle = 0
-
-    logger.info("AltoTrader update service started.")
+    total_success = total_failure = cycle = 0
 
     while not stop_flag[0]:
         cycle += 1
@@ -70,12 +71,13 @@ def run_update(pair_yaml: str = PAIRS_YAML):
         else:
             consecutive_failures += 1
             total_failure += 1
-            # Exponential back-off capped at MAX_BACKOFF_SECONDS
-            backoff = min(POLL_INTERVAL_SECONDS * (2 ** (consecutive_failures - 1)),
-                          MAX_BACKOFF_SECONDS)
+            backoff = min(
+                POLL_INTERVAL_SECONDS * (2 ** (consecutive_failures - 1)),
+                MAX_BACKOFF_SECONDS,
+            )
             logger.warning(
-                f"Update failed (consecutive failures: {consecutive_failures}). "
-                f"Backing off for {backoff}s."
+                f"Update failed (consecutive: {consecutive_failures}). "
+                f"Backing off {backoff}s."
             )
             sleep_time = backoff
 
@@ -84,18 +86,76 @@ def run_update(pair_yaml: str = PAIRS_YAML):
                 f"[Heartbeat] cycle={cycle} | ok={total_success} | fail={total_failure}"
             )
 
-        # Interruptible sleep: check stop_flag every second
+        # Interruptible sleep
         for _ in range(int(sleep_time)):
             if stop_flag[0]:
                 break
             time.sleep(1)
 
     logger.info(
-        f"Update service stopped. Total cycles: {cycle} | "
-        f"success: {total_success} | failure: {total_failure}"
+        f"Service stopped. cycles={cycle} | ok={total_success} | fail={total_failure}"
     )
 
 
-if __name__ == '__main__':
-    pair_yaml = sys.argv[1] if len(sys.argv) > 1 else PAIRS_YAML
-    run_update(pair_yaml=pair_yaml)
+def run_rest(pair_yaml: str = PAIRS_YAML):
+    """Start the REST-polling streaming service."""
+    from altotrader.ticker.krakenticker import KrakenTicker
+
+    setup_logging(log_filename="run_update_service.logs", log_dir=LOG_DIR)
+    logger = logging.getLogger(__name__)
+    logger.info("Starting AltoTrader streaming service [mode: REST]")
+
+    ticker  = KrakenTicker(pairs_yaml=pair_yaml, log_dir=LOG_DIR)
+    service = TickerUpdateService(ticker, log_dir=LOG_DIR)
+
+    stop_flag = [False]
+    signal.signal(signal.SIGINT,  _make_shutdown_handler(stop_flag))
+    signal.signal(signal.SIGTERM, _make_shutdown_handler(stop_flag))
+
+    _polling_loop(service, stop_flag)
+
+
+def run_websocket(pair_yaml: str = PAIRS_YAML):
+    """Start the WebSocket streaming service."""
+    from altotrader.ticker.kraken_ws_ticker import KrakenWsTicker
+
+    setup_logging(log_filename="run_update_service.logs", log_dir=LOG_DIR)
+    logger = logging.getLogger(__name__)
+    logger.info("Starting AltoTrader streaming service [mode: WebSocket]")
+
+    stop_flag = [False]
+    signal.signal(signal.SIGINT,  _make_shutdown_handler(stop_flag))
+    signal.signal(signal.SIGTERM, _make_shutdown_handler(stop_flag))
+
+    with KrakenWsTicker(pairs_yaml=pair_yaml, log_dir=LOG_DIR) as ticker:
+        # Brief wait for the first WS messages to arrive
+        logger.info("Waiting 3s for initial WebSocket data …")
+        time.sleep(3)
+
+        service = TickerUpdateService(ticker, log_dir=LOG_DIR)
+        _polling_loop(service, stop_flag)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="AltoTrader data streaming service")
+    parser.add_argument(
+        "--mode",
+        choices=["rest", "websocket"],
+        default=os.getenv("MODE", "rest"),
+        help="Data source mode: 'rest' (default) or 'websocket'",
+    )
+    parser.add_argument(
+        "--pairs",
+        default=PAIRS_YAML,
+        help=f"Path to pairs YAML file (default: {PAIRS_YAML})",
+    )
+    args = parser.parse_args()
+
+    if args.mode == "websocket":
+        run_websocket(pair_yaml=args.pairs)
+    else:
+        run_rest(pair_yaml=args.pairs)
+
+
+if __name__ == "__main__":
+    main()

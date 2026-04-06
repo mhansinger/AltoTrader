@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import logging
+from itertools import product
+from typing import List
 
 from altotrader.backtest.dataloader import DataLoader
 from altotrader.logging_config import setup_logging
@@ -267,6 +269,145 @@ class BacktestEngine:
         }
 
 
+    def plot_results(self, show: bool = True, save_path: str = None):
+        """Plot equity curve, buy/sell markers and drawdown after a run().
+
+        Requires matplotlib.  Install with: pip install matplotlib
+
+        Args:
+            show:      Display the interactive figure (default True).
+            save_path: Optional file path to save the figure (e.g. 'out.png').
+        """
+        try:
+            import matplotlib.pyplot as plt
+            import matplotlib.dates as mdates
+        except ImportError:
+            self.logger.error(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install matplotlib"
+            )
+            return
+
+        pv_col = f"portfolio_in_{self.base_currency}"
+        pv = self.portfolio_view[pv_col].dropna()
+        timestamps = pv.index
+
+        buys  = self.portfolio_view[self.portfolio_view["action"] == "buy"]
+        sells = self.portfolio_view[
+            self.portfolio_view["action"].str.startswith("sell", na=False)
+        ]
+
+        # Drawdown
+        rolling_max = pv.cummax()
+        drawdown    = (pv - rolling_max) / rolling_max * 100
+
+        fig, (ax1, ax2) = plt.subplots(
+            2, 1, figsize=(14, 8), sharex=True,
+            gridspec_kw={"height_ratios": [3, 1]},
+        )
+        fig.suptitle(
+            f"Backtest: {self.pair}  |  "
+            f"Return {self.compute_metrics()['total_return_pct']:.2f}%",
+            fontsize=13,
+        )
+
+        # ── Equity curve ──────────────────────────────────────────────────────
+        ax1.plot(timestamps, pv, color="steelblue", linewidth=1.2, label="Portfolio")
+        ax1.axhline(self.initial_invest, color="grey", linewidth=0.8,
+                    linestyle="--", label="Initial invest")
+
+        if not buys.empty:
+            ax1.scatter(
+                buys.index, buys[pv_col], marker="^", color="green",
+                s=80, zorder=5, label="Buy",
+            )
+        if not sells.empty:
+            ax1.scatter(
+                sells.index, sells[pv_col], marker="v", color="red",
+                s=80, zorder=5, label="Sell",
+            )
+
+        ax1.set_ylabel(f"Portfolio value ({self.base_currency})")
+        ax1.legend(loc="upper left", fontsize=9)
+        ax1.grid(True, alpha=0.3)
+
+        # ── Drawdown ──────────────────────────────────────────────────────────
+        ax2.fill_between(timestamps, drawdown, 0, color="salmon", alpha=0.6)
+        ax2.set_ylabel("Drawdown (%)")
+        ax2.set_xlabel("Date")
+        ax2.grid(True, alpha=0.3)
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+        fig.autofmt_xdate()
+
+        plt.tight_layout()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            self.logger.info(f"Plot saved to {save_path}")
+        if show:
+            plt.show()
+        plt.close(fig)
+
+
+def run_grid_search(
+    engine: "BacktestEngine",
+    short_windows: List[int],
+    long_windows: List[int],
+) -> pd.DataFrame:
+    """Run a parameter sweep over MA window combinations.
+
+    Only valid combinations (short < long) are tested.
+
+    Args:
+        engine:        A configured BacktestEngine instance.
+        short_windows: List of short MA window sizes (minutes).
+        long_windows:  List of long MA window sizes (minutes).
+
+    Returns:
+        DataFrame sorted by total_return_pct (descending), with one row per
+        valid (window_short, window_long) combination.
+
+    Example::
+
+        results = run_grid_search(engine, [10, 20, 50], [100, 200, 500])
+        print(results.head())
+    """
+    logger = logging.getLogger(__name__)
+    rows = []
+
+    combos = [(ws, wl) for ws, wl in product(short_windows, long_windows) if ws < wl]
+    logger.info(f"Grid search: {len(combos)} combinations to test")
+
+    for ws, wl in combos:
+        try:
+            metrics = engine.run(window_short=ws, window_long=wl)
+            metrics["window_short"] = ws
+            metrics["window_long"]  = wl
+            rows.append(metrics)
+            logger.debug(
+                f"  ws={ws:>4} wl={wl:>4}  "
+                f"return={metrics['total_return_pct']:+.2f}%  "
+                f"trades={metrics['n_trades']}"
+            )
+        except Exception as e:
+            logger.warning(f"  ws={ws} wl={wl} failed: {e}")
+
+    if not rows:
+        return pd.DataFrame()
+
+    results = (
+        pd.DataFrame(rows)
+        .sort_values("total_return_pct", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    best = results.iloc[0]
+    logger.info(
+        f"Best: ws={best['window_short']} wl={best['window_long']}  "
+        f"return={best['total_return_pct']:+.2f}%"
+    )
+    return results
+
+
 if __name__ == '__main__':
     loader_dict = {'export_path': "Examples/ticker_export",
                    "latest_days": 20, "logs_dir": 'logs'}
@@ -286,3 +427,9 @@ if __name__ == '__main__':
     print("\n=== Backtest Results ===")
     for k, v in metrics.items():
         print(f"  {k}: {v}")
+
+    backtest.plot_results(show=False, save_path="Examples/backtest_result.png")
+
+    print("\n=== Grid Search ===")
+    results = run_grid_search(backtest, short_windows=[20, 50, 100], long_windows=[100, 200, 500])
+    print(results[["window_short", "window_long", "total_return_pct", "n_trades", "sharpe_ratio"]].to_string())

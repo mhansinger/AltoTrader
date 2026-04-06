@@ -1,9 +1,28 @@
+import inspect
+import os
 import pytest
 from unittest.mock import patch, Mock
 import pandas as pd
 from datetime import datetime
-import krakenex
-import os
+
+# Tests that use patch.object(krakenex.API, ...) only work when the real
+# krakenex package is installed.  In environments where its legacy setup.py
+# cannot be built, conftest.py stubs it with a MagicMock and these tests are
+# skipped automatically.
+#
+# inspect.isclass() is True only for real Python classes, not for MagicMock
+# attributes, making it a reliable guard.
+try:
+    import krakenex
+    _KRAKENEX_REAL = inspect.isclass(krakenex.API)
+except Exception:
+    _KRAKENEX_REAL = False
+
+needs_real_krakenex = pytest.mark.skipif(
+    not _KRAKENEX_REAL,
+    reason="krakenex not installable in this environment (legacy setup.py build issue)"
+)
+
 from altotrader.ticker.krakenticker import KrakenTicker
 
 # Test the _load_yaml method
@@ -26,7 +45,7 @@ def test_load_yaml():
 
 # # Test the get_market_query method with a successful response
 
-
+@needs_real_krakenex
 @patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}}})
 def test_get_market_query(mock_query_public):
     test_file_path = os.path.join(os.path.dirname(
@@ -44,6 +63,7 @@ def test_get_market_query(mock_query_public):
 # # Test the get_market_price method with a valid response
 
 
+@needs_real_krakenex
 @patch.object(krakenex.API, 'query_public', return_value={"result": {"XETHZEUR": {"c": [1743.55]}, "XXBTZEUR": {"c": [78230.1]}}})
 def test_get_market_price_valid(mock_query_public):
     test_file_path = os.path.join(os.path.dirname(
