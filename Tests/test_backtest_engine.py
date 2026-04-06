@@ -57,9 +57,9 @@ class TestEnterMarket:
         row = engine.portfolio_view.iloc[1]
         engine.enter_market(1, row)
 
-        ask = row[PAIR + "_ask"]
+        effective_ask = row[PAIR + "_ask"] * (1 + engine.slippage_pct)
         fee = 1000.0 * engine.taker_fee
-        expected_amount = (1000.0 - fee) / ask
+        expected_amount = (1000.0 - fee) / effective_ask
 
         assert engine.portfolio_view.at[row.name, TRADING] == pytest.approx(expected_amount)
         assert engine.portfolio_view.at[row.name, BASE] == pytest.approx(0.0)
@@ -108,9 +108,9 @@ class TestExitMarket:
         row2 = engine.portfolio_view.iloc[2]
         engine.exit_market(2, row2)
 
-        bid = row2[PAIR + "_bid"]
+        effective_bid = row2[PAIR + "_bid"] * (1 - engine.slippage_pct)
         crypto_held = engine.portfolio_view.iloc[1][TRADING]
-        gross = crypto_held * bid
+        gross = crypto_held * effective_bid
         expected_proceeds = gross * (1 - engine.maker_fee)
 
         assert engine.portfolio_view.at[row2.name, BASE] == pytest.approx(expected_proceeds)
@@ -204,10 +204,52 @@ class TestComputeMetrics:
         metrics = engine.compute_metrics()
         expected_keys = {
             "total_return_pct", "buy_and_hold_return_pct", "n_trades",
-            "win_rate", "max_drawdown_pct", "sharpe_ratio",
-            "total_fees", "final_portfolio_value",
+            "win_rate", "max_drawdown_pct", "max_drawdown_duration_hrs",
+            "sharpe_ratio", "total_fees", "taker_fees", "maker_fees",
+            "final_portfolio_value",
         }
         assert expected_keys.issubset(metrics.keys())
+
+    def test_fee_breakdown_sums_to_total(self):
+        prices = np.array([40_000.0, 40_000.0, 42_000.0, 42_000.0, 42_000.0])
+        engine = _make_engine(prices)
+        engine.enter_market(1, engine.portfolio_view.iloc[1])
+        engine.exit_market(2, engine.portfolio_view.iloc[2])
+        metrics = engine.compute_metrics()
+        assert metrics["taker_fees"] + metrics["maker_fees"] == pytest.approx(
+            metrics["total_fees"], rel=1e-6
+        )
+
+    def test_taker_fee_on_buy_maker_fee_on_sell(self):
+        prices = np.array([40_000.0, 40_000.0, 42_000.0, 42_000.0, 42_000.0])
+        engine = _make_engine(prices)
+        engine.enter_market(1, engine.portfolio_view.iloc[1])
+        engine.exit_market(2, engine.portfolio_view.iloc[2])
+        assert engine.trade_log[0]["fee_type"] == "taker"
+        assert engine.trade_log[1]["fee_type"] == "maker"
+
+    def test_drawdown_duration_nonnegative(self):
+        engine = _make_engine(np.full(50, 40_000.0))
+        engine.portfolio_view["portfolio_in_" + BASE] = 1000.0
+        metrics = engine.compute_metrics()
+        assert metrics["max_drawdown_duration_hrs"] >= 0.0
+
+    def test_slippage_increases_buy_price(self):
+        engine = _make_engine(np.full(5, 40_000.0))
+        row = engine.portfolio_view.iloc[1]
+        raw_ask = row[PAIR + "_ask"]
+        engine.enter_market(1, row)
+        effective_price = engine.trade_log[0]["price"]
+        assert effective_price == pytest.approx(raw_ask * (1 + engine.slippage_pct))
+
+    def test_slippage_decreases_sell_price(self):
+        engine = _make_engine(np.full(5, 40_000.0))
+        engine.enter_market(1, engine.portfolio_view.iloc[1])
+        row2 = engine.portfolio_view.iloc[2]
+        raw_bid = row2[PAIR + "_bid"]
+        engine.exit_market(2, row2)
+        effective_price = engine.trade_log[1]["price"]
+        assert effective_price == pytest.approx(raw_bid * (1 - engine.slippage_pct))
 
 
 # ── run() – MA crossover integration ─────────────────────────────────────────

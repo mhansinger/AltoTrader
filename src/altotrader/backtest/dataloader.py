@@ -89,12 +89,33 @@ class DataLoader:
             f'{window_long}min').mean()
 
     def _iterpolate_nan(self, df: pd.DataFrame) -> pd.DataFrame:
-        """check if NaN in df. If so, interpolate linearly"""
+        """check if NaN in df. If so, log details and interpolate linearly."""
         assert type(df.index) == pd.core.indexes.datetimes.DatetimeIndex
 
         if df.isna().any().any():
+            total_nans = int(df.isna().sum().sum())
+            for col in df.columns:
+                col_nans = df[col].isna()
+                if not col_nans.any():
+                    continue
+                n = int(col_nans.sum())
+                # Find contiguous NaN blocks
+                groups = (col_nans != col_nans.shift()).cumsum()
+                blocks = [
+                    (g.index[0], g.index[-1])
+                    for _, g in col_nans.groupby(groups)
+                    if g.all()
+                ]
+                block_str = ", ".join(f"{s} → {e}" for s, e in blocks[:5])
+                if len(blocks) > 5:
+                    block_str += f" … (+{len(blocks) - 5} more)"
+                self.logger.warning(
+                    f"Column '{col}': {n} NaN(s) in {len(blocks)} block(s): {block_str}"
+                )
+            self.logger.info(
+                f"Interpolating {total_nans} NaN value(s) across {df.shape[1]} column(s)"
+            )
             df = df.interpolate(method='time')
-            self.logger.info(f"NaNs are interpolated")
 
         return df
 
