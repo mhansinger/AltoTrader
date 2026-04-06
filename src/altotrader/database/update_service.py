@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime, timezone
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.client.exceptions import InfluxDBError
@@ -12,7 +13,8 @@ from altotrader.ticker.baseticker import BaseTicker
 from altotrader.logging_config import setup_logging
 
 _MAX_RETRIES = 4
-_RETRY_BASE_DELAY = 2  # seconds (doubles each attempt: 2, 4, 8, 16)
+_RETRY_BASE_DELAY = 2          # seconds (doubles each attempt: 2, 4, 8, 16)
+_STALE_DATA_THRESHOLD_SEC = 300  # warn when last fetch is older than 5 minutes
 
 
 class TickerUpdateService:
@@ -101,23 +103,65 @@ class TickerUpdateService:
     def _fetch_market_query_with_retry(self) -> dict:
         """Fetch market data from Kraken with exponential backoff retry.
 
+        Distinguishes between transient network errors (exception raised) and
+        empty results (API returned no data):
+          - Network errors: retry immediately with backoff.
+          - Empty result:   retry with backoff; these are treated equivalently
+                            because the REST ticker already swallows exceptions.
+
+        After a successful fetch the ticker's ``timestamp_last_fetch`` is
+        checked; if it is older than ``_STALE_DATA_THRESHOLD_SEC`` a warning
+        is logged so that operator knows the data may be stale before it is
+        written to InfluxDB.
+
         Returns:
             dict with market data, or empty dict on failure.
         """
         delay = _RETRY_BASE_DELAY
         for attempt in range(1, _MAX_RETRIES + 1):
-            result = self.ticker.get_market_query()
+            try:
+                result = self.ticker.get_market_query()
+            except Exception as e:
+                # Should rarely happen – tickers catch internally – but guard
+                # anyway so unexpected exceptions are retried rather than
+                # propagating and skipping the write.
+                self.logger.warning(
+                    f"get_market_query() raised an exception (attempt "
+                    f"{attempt}/{_MAX_RETRIES}): {e}"
+                )
+                result = {}
+
             if result:
+                self._check_stale_data()
                 return result
+
             if attempt < _MAX_RETRIES:
                 self.logger.warning(
                     f"Market query returned empty (attempt {attempt}/{_MAX_RETRIES}), "
-                    f"retrying in {delay}s..."
+                    f"retrying in {delay}s…"
                 )
                 time.sleep(delay)
                 delay *= 2
+
         self.logger.error(f"Market query failed after {_MAX_RETRIES} attempts")
         return {}
+
+    def _check_stale_data(self) -> None:
+        """Warn if the ticker's last-fetch timestamp is suspiciously old."""
+        last_fetch = getattr(self.ticker, 'timestamp_last_fetch', None)
+        if not isinstance(last_fetch, datetime):
+            return
+        # Normalise to timezone-aware UTC for comparison
+        now = datetime.now(timezone.utc)
+        if last_fetch.tzinfo is None:
+            last_fetch = last_fetch.replace(tzinfo=timezone.utc)
+        age_sec = (now - last_fetch).total_seconds()
+        if age_sec > _STALE_DATA_THRESHOLD_SEC:
+            self.logger.warning(
+                f"Stale data: last successful fetch was {age_sec:.0f}s ago "
+                f"(threshold: {_STALE_DATA_THRESHOLD_SEC}s). "
+                "Check that the data-collection service is running."
+            )
 
     def _generate_points(self, df: pd.DataFrame, ticker_entry: str) -> list:
         """Convert DataFrame to InfluxDB points."""

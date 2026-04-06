@@ -243,12 +243,47 @@ class KrakenWsTicker(BaseTicker):
             ws_pair   = data[3]
             tick_data = data[1]
 
+            # Validate required fields before parsing
+            required_fields = ("c", "a", "b")
+            if not isinstance(tick_data, dict) or not all(
+                k in tick_data and tick_data[k] for k in required_fields
+            ):
+                self.logger.warning(
+                    f"Incomplete tick data for {ws_pair}: "
+                    f"missing/empty fields. Raw: {str(tick_data)[:200]}"
+                )
+                return
+
+            try:
+                close_price = float(tick_data["c"][0])
+                ask_price   = float(tick_data["a"][0])
+                bid_price   = float(tick_data["b"][0])
+            except (ValueError, TypeError, IndexError) as exc:
+                self.logger.warning(
+                    f"Could not parse tick prices for {ws_pair}: {exc}"
+                )
+                return
+
+            # Sanity checks
+            if close_price <= 0 or ask_price <= 0 or bid_price <= 0:
+                self.logger.warning(
+                    f"Non-positive price(s) for {ws_pair}: "
+                    f"c={close_price}, a={ask_price}, b={bid_price}. Skipping."
+                )
+                return
+            if ask_price < bid_price:
+                self.logger.warning(
+                    f"Crossed market for {ws_pair}: "
+                    f"ask ({ask_price}) < bid ({bid_price}). Skipping."
+                )
+                return
+
             # Extract close (c), ask (a), bid (b) – each is [price, volume]
             with self._lock:
                 self._prices[ws_pair] = {
-                    "c": float(tick_data["c"][0]),
-                    "a": float(tick_data["a"][0]),
-                    "b": float(tick_data["b"][0]),
+                    "c": close_price,
+                    "a": ask_price,
+                    "b": bid_price,
                 }
             self.logger.debug(f"Tick {ws_pair}: {self._prices[ws_pair]}")
 
