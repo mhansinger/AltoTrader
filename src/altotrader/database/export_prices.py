@@ -41,7 +41,7 @@ def export_prices(path_to_parquet: str,
         logger.error(f"Missing InfluxDB configuration: {', '.join(missing)}")
         return False
 
-    ticker_entries = ['a', 'b', 'c']  # ask, bid, current
+    ticker_entries = ['a', 'b', 'c', 'v']  # ask, bid, current, volume
 
     for ticker in ticker_entries:
         df_pivot = _query_with_retry(ticker, days_into_past, influx_config)

@@ -13,6 +13,10 @@ a dict in the normalised format::
     }
 
 ``get_last_ticker()`` is provided here and works identically for every exchange.
+
+The normalised ``get_market_query()`` dict must contain at least the keys
+``c``, ``a``, and ``b`` (float).  Adding ``v`` (24 h base-asset volume) is
+optional but recommended – it is stored as a 4th ticker_entry in InfluxDB.
 """
 from __future__ import annotations
 
@@ -93,7 +97,7 @@ class RestBaseTicker(BaseTicker):
             DataFrame with a single timestamp row and one column per pair.
             Empty DataFrame on failure.
         """
-        valid_entries = {"c", "a", "b"}
+        valid_entries = {"c", "a", "b", "v"}
         if ticker_entry not in valid_entries:
             raise ValueError(
                 f"Invalid ticker_entry '{ticker_entry}'. Must be one of {valid_entries}."

@@ -20,6 +20,8 @@ class BacktestEngine:
         self.pair = f"{self.trading_currency}-{self.base_currency}"
         # Slippage applied on top of ask/bid spread (0.0005 = 0.05%)
         self.slippage_pct = backtest_config.get('slippage_pct', 0.0005)
+        # Optional volume filter: only enter if volume >= rolling mean over this window (minutes)
+        self.volume_filter_window: Optional[int] = backtest_config.get('volume_filter_window', None)
 
         setup_logging(log_filename='backtest.logs', log_dir=log_dir)
         self.logger = logging.getLogger(__name__)
@@ -39,6 +41,8 @@ class BacktestEngine:
         self.portfolio_view[self.pair]           = self.dataloader.ticker_current[self.pair]
         self.portfolio_view[self.pair + '_ask']  = self.dataloader.ticker_ask[self.pair]
         self.portfolio_view[self.pair + '_bid']  = self.dataloader.ticker_bid[self.pair]
+        if self.dataloader.ticker_volume is not None and self.pair in self.dataloader.ticker_volume.columns:
+            self.portfolio_view[self.pair + '_volume'] = self.dataloader.ticker_volume[self.pair]
 
         self.portfolio_view[self.base_currency]              = float(self.initial_invest)
         self.portfolio_view[self.trading_currency]           = 0.0
@@ -171,9 +175,15 @@ class BacktestEngine:
         Returns:
             dict with performance metrics
         """
+        vol_filter_active = (
+            self.volume_filter_window is not None
+            and self.dataloader.ticker_volume is not None
+            and self.pair in self.dataloader.ticker_volume.columns
+        )
         self.logger.info(
             f"Starting backtest | short={window_short}min | long={window_long}min | "
-            f"slippage={self.slippage_pct*100:.3f}%"
+            f"slippage={self.slippage_pct*100:.3f}% | "
+            f"volume_filter={'on (' + str(self.volume_filter_window) + 'min)' if vol_filter_active else 'off'}"
         )
         self._set_portfolio_view_df()
         self.dataloader.compute_rolling_means(window_short, window_long)
@@ -183,6 +193,12 @@ class BacktestEngine:
 
         self.portfolio_view['ma_short'] = ma_short
         self.portfolio_view['ma_long']  = ma_long
+
+        if vol_filter_active:
+            vol_ma = self.dataloader.ticker_volume[self.pair].rolling(
+                f'{self.volume_filter_window}min'
+            ).mean()
+            self.portfolio_view['_vol_ma'] = vol_ma
 
         valid = self.portfolio_view.dropna(subset=['ma_short', 'ma_long'])
 
@@ -214,7 +230,17 @@ class BacktestEngine:
             golden_cross = (prev_short <= prev_long) and (curr_short > curr_long)
             death_cross  = (prev_short >= prev_long) and (curr_short < curr_long)
 
-            if golden_cross and curr_position == 'out':
+            # Volume filter: only enter when volume >= rolling mean
+            volume_ok = True
+            if vol_filter_active and golden_cross:
+                vol_ma_val = self.portfolio_view.at[row.name, '_vol_ma']
+                curr_vol   = self.portfolio_view.at[row.name, self.pair + '_volume']
+                if pd.notna(vol_ma_val) and pd.notna(curr_vol):
+                    volume_ok = curr_vol >= vol_ma_val
+                else:
+                    volume_ok = False  # insufficient data → skip
+
+            if golden_cross and curr_position == 'out' and volume_ok:
                 pending_action = 'buy'
             elif death_cross and curr_position == 'in':
                 pending_action = 'sell'

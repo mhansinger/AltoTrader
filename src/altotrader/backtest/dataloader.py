@@ -19,6 +19,7 @@ class DataLoader:
         self.ticker_current = None
         self.ticker_ask = None
         self.ticker_bid = None
+        self.ticker_volume = None
 
         self.rolling_ask_short = self.rolling_ask_long = None
         self.rolling_bid_short = self.rolling_bid_long = None
@@ -112,10 +113,22 @@ class DataLoader:
         self.ticker_bid     = load_and_merge("b")
         self.ticker_current = load_and_merge("c")
 
+        # Volume is optional – tolerate missing files gracefully
+        try:
+            self.ticker_volume = load_and_merge("v")
+        except RuntimeError:
+            self.logger.info(
+                "No volume ('v') CSV files found – ticker_volume will be None. "
+                "Re-export from InfluxDB to include volume data."
+            )
+            self.ticker_volume = None
+
         # fill NaN if any
         self.ticker_ask = self._iterpolate_nan(self.ticker_ask)
         self.ticker_bid = self._iterpolate_nan(self.ticker_bid)
         self.ticker_current = self._iterpolate_nan(self.ticker_current)
+        if self.ticker_volume is not None:
+            self.ticker_volume = self._iterpolate_nan(self.ticker_volume)
 
     def compute_rolling_means(self, window_short: int, window_long: int) -> None:
         """computes the rolling means for ask, bid, current dataframes with short and long
@@ -133,7 +146,7 @@ class DataLoader:
         self._window_short = window_short
 
         if self.ticker_current is None or self.ticker_ask is None or self.ticker_bid is None:
-            self.load_csv_export()
+            self.load_csv_export()  # also loads ticker_volume if available
 
         self.rolling_ask_short = self.ticker_ask.rolling(
             f'{window_short}min').mean()

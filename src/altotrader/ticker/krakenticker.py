@@ -63,8 +63,12 @@ class KrakenTicker(BaseTicker):
     def get_market_query(self) -> dict:
         """Fetch all Kraken ticker data and return it keyed by unified pair names.
 
+        The raw Kraken response uses list fields (e.g. ``c[0]`` = last price,
+        ``v[1]`` = 24 h rolling volume).  Volume is normalised so that index 0
+        always holds the 24 h value, consistent with how other entries are read.
+
         Returns:
-            ``{"BTC-EUR": {"c": [...], "a": [...], "b": [...]}, ...}``
+            ``{"BTC-EUR": {"c": [...], "a": [...], "b": [...], "v": [...]}, ...}``
         """
         try:
             response = self.k.query_public("Ticker")
@@ -76,7 +80,11 @@ class KrakenTicker(BaseTicker):
             for rest_key, data in raw.items():
                 unified = _REST_TO_UNIFIED.get(rest_key)
                 if unified is not None:
-                    result[unified] = data
+                    entry = dict(data)
+                    # Normalise volume: Kraken v = [today, 24h] – expose 24 h at index 0
+                    if "v" in entry and isinstance(entry["v"], list) and len(entry["v"]) >= 2:
+                        entry["v"] = [entry["v"][1]]
+                    result[unified] = entry
 
             return result
         except Exception as e:
@@ -96,7 +104,7 @@ class KrakenTicker(BaseTicker):
 
         self.logger.info(f"ticker_entry: {ticker_entry}")
 
-        valid_entries = {"c", "a", "b"}
+        valid_entries = {"c", "a", "b", "v"}
         if ticker_entry not in valid_entries:
             self.logger.error(
                 f"Invalid ticker_entry '{ticker_entry}'. Must be one of {valid_entries}.")

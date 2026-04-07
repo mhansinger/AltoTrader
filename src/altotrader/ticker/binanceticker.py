@@ -52,6 +52,7 @@ class BinanceTicker(RestBaseTicker):
                     "c": float(item["lastPrice"]),
                     "a": float(item["askPrice"]),
                     "b": float(item["bidPrice"]),
+                    "v": float(item.get("volume", 0.0)),  # 24 h base-asset volume
                 }
 
             if result:
@@ -72,6 +73,6 @@ if __name__ == "__main__":
     ticker = BinanceTicker(pairs_yaml="Examples/binance_pairs.yaml")
     while True:
         mq = ticker.get_market_query()
-        for entry in ("c", "a", "b"):
+        for entry in ("c", "a", "b", "v"):
             print(ticker.get_last_ticker(ticker_entry=entry, market_query=mq))
         time.sleep(60)

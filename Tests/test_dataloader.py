@@ -17,16 +17,26 @@ N_ROWS = 200  # enough for a long rolling window in tests
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _make_csv_files(tmp_dir: str, n_rows: int = N_ROWS, pair: str = PAIR,
-                    introduce_nans: bool = False) -> dict:
-    """Write the three CSV files (a, b, c) that DataLoader expects and return
-    the loader_dict pointing at them."""
+                    introduce_nans: bool = False, include_volume: bool = True) -> dict:
+    """Write CSV files (a, b, c, and optionally v) that DataLoader expects."""
 
     dates = pd.date_range("2025-01-01", periods=n_rows, freq="1min")
     prices = np.linspace(40_000, 42_000, n_rows)
 
-    for suffix, multiplier in [("a", 1.001), ("b", 0.999), ("c", 1.0)]:
+    suffixes = [("a", 1.001), ("b", 0.999), ("c", 1.0)]
+    if include_volume:
+        # Simulate 24 h volume (e.g. BTC amounts, ranging 1–10)
+        volume = np.linspace(1.0, 10.0, n_rows)
+        suffixes.append(("v", None))
+
+    for item in suffixes:
+        suffix, multiplier = item
+        if suffix == "v":
+            values = volume
+        else:
+            values = prices * multiplier
         df = pd.DataFrame(
-            {"ticker_entry": suffix, pair: prices * multiplier},
+            {"ticker_entry": suffix, pair: values},
             index=dates,
         )
         df.index.name = "timestamp"
@@ -209,6 +219,38 @@ class TestMultiSource:
         loader = DataLoader(config)
         loader.load_csv_export()
         assert "BTC-EUR" in loader.ticker_current.columns
+
+
+class TestVolumeLoader:
+    """DataLoader correctly loads and exposes ticker_volume when v CSV exists."""
+
+    def test_ticker_volume_loaded(self, tmp_path):
+        config = _make_csv_files(str(tmp_path), include_volume=True)
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert loader.ticker_volume is not None
+        assert PAIR in loader.ticker_volume.columns
+
+    def test_ticker_volume_no_nans(self, tmp_path):
+        config = _make_csv_files(str(tmp_path), include_volume=True)
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert not loader.ticker_volume.isna().any().any()
+
+    def test_ticker_volume_none_when_missing(self, tmp_path):
+        """If no volume CSV exists, ticker_volume should be None (not an error)."""
+        config = _make_csv_files(str(tmp_path), include_volume=False)
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        assert loader.ticker_volume is None
+
+    def test_ticker_volume_values_increase(self, tmp_path):
+        """Volume values should match the monotonically increasing test data."""
+        config = _make_csv_files(str(tmp_path), include_volume=True)
+        loader = DataLoader(config)
+        loader.load_csv_export()
+        # First value < last value (linspace 1→10)
+        assert loader.ticker_volume[PAIR].iloc[0] < loader.ticker_volume[PAIR].iloc[-1]
 
 
 class TestInterpolateNan:

@@ -82,7 +82,7 @@ class KrakenWsTicker(BaseTicker):
         self.logger = logging.getLogger(__name__)
 
         # Latest prices keyed by WS pair name
-        self._prices: Dict[str, Dict[str, float]] = {}  # {ws_pair: {c, a, b}}
+        self._prices: Dict[str, Dict[str, float]] = {}  # {ws_pair: {c, a, b, v}}
         self._lock = threading.Lock()
 
         self._ws = None
@@ -132,7 +132,7 @@ class KrakenWsTicker(BaseTicker):
         """Return latest cached prices keyed by unified pair name.
 
         Returns a dict keyed by unified pair name (e.g. 'BTC-EUR'), with
-        sub-dicts for c/a/b (list format for KrakenTicker compatibility).
+        sub-dicts for c/a/b/v (list format for KrakenTicker compatibility).
         Returns an empty dict if no data has been received yet.
         """
         with self._lock:
@@ -144,6 +144,7 @@ class KrakenWsTicker(BaseTicker):
                         "c": [prices.get("c", 0.0)],
                         "a": [prices.get("a", 0.0)],
                         "b": [prices.get("b", 0.0)],
+                        "v": [prices.get("v", 0.0)],  # 24 h rolling volume
                     }
             if result:
                 self.timestamp_last_fetch = self.current_timestamp()
@@ -151,7 +152,7 @@ class KrakenWsTicker(BaseTicker):
 
     def get_last_ticker(self, ticker_entry: str, market_query: dict = None) -> pd.DataFrame:
         """Return a one-row DataFrame with the latest prices (same as KrakenTicker)."""
-        valid_entries = {"c", "a", "b"}
+        valid_entries = {"c", "a", "b", "v"}
         if ticker_entry not in valid_entries:
             raise ValueError(f"ticker_entry must be one of {valid_entries}")
 
@@ -246,7 +247,7 @@ class KrakenWsTicker(BaseTicker):
             ws_pair   = data[3]
             tick_data = data[1]
 
-            # Validate required fields before parsing
+            # Validate required price fields before parsing
             required_fields = ("c", "a", "b")
             if not isinstance(tick_data, dict) or not all(
                 k in tick_data and tick_data[k] for k in required_fields
@@ -261,6 +262,9 @@ class KrakenWsTicker(BaseTicker):
                 close_price = float(tick_data["c"][0])
                 ask_price   = float(tick_data["a"][0])
                 bid_price   = float(tick_data["b"][0])
+                # v = [volume_today, volume_24h]; take the 24 h rolling value
+                v_raw    = tick_data.get("v", [0.0, 0.0])
+                volume   = float(v_raw[1]) if len(v_raw) >= 2 else float(v_raw[0])
             except (ValueError, TypeError, IndexError) as exc:
                 self.logger.warning(
                     f"Could not parse tick prices for {ws_pair}: {exc}"
@@ -281,12 +285,13 @@ class KrakenWsTicker(BaseTicker):
                 )
                 return
 
-            # Extract close (c), ask (a), bid (b) – each is [price, volume]
+            # Store close, ask, bid, and 24 h volume
             with self._lock:
                 self._prices[ws_pair] = {
                     "c": close_price,
                     "a": ask_price,
                     "b": bid_price,
+                    "v": volume,
                 }
             self.logger.debug(f"Tick {ws_pair}: {self._prices[ws_pair]}")
 

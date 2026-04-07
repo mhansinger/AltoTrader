@@ -18,6 +18,7 @@ Protocol summary
   ``c``        Last trade price
   ``a``        Best ask price
   ``b``        Best bid price
+  ``v``        24 h base-asset volume
   ============ =============================
 
 - Server sends a WebSocket ping frame every 20 s; ``websocket-client``
@@ -84,7 +85,7 @@ class BinanceWsTicker(RestBaseTicker):
     def __init__(self, pairs_yaml: str, log_dir: str = "logs"):
         super().__init__(pairs_yaml, log_dir)
 
-        # Price cache: {SYMBOL (uppercase): {c, a, b}}
+        # Price cache: {unified_pair: {c, a, b, v}}
         self._prices: Dict[str, Dict[str, float]] = {}
         self._lock   = threading.Lock()
 
@@ -231,11 +232,12 @@ class BinanceWsTicker(RestBaseTicker):
             if symbol is None:
                 return
 
-            # Parse the three price fields
+            # Parse price and volume fields
             try:
                 c = float(tick["c"])   # last price
                 a = float(tick["a"])   # best ask
                 b = float(tick["b"])   # best bid
+                v = float(tick.get("v", 0.0))  # 24 h base-asset volume
             except (KeyError, ValueError, TypeError) as exc:
                 self.logger.warning(f"Price parse error for {symbol}: {exc}")
                 return
@@ -254,9 +256,9 @@ class BinanceWsTicker(RestBaseTicker):
                 return
 
             with self._lock:
-                self._prices[symbol] = {"c": c, "a": a, "b": b}
+                self._prices[symbol] = {"c": c, "a": a, "b": b, "v": v}
 
-            self.logger.debug(f"Tick {symbol}: c={c}, a={a}, b={b}")
+            self.logger.debug(f"Tick {symbol}: c={c}, a={a}, b={b}, v={v}")
 
         except Exception as exc:
             self.logger.error(

@@ -37,13 +37,18 @@ class GeminiTicker(RestBaseTicker):
             try:
                 ex_sym = self._to_exchange_pair(pair)   # btceur
                 data   = self._get(f"{_BASE_URL}/pubticker/{ex_sym}")
+                # Gemini volume dict: {"BTC": "100.5", "EUR": "5000000", "timestamp": ...}
+                base_currency = pair.split("-")[0]
+                v_dict = data.get("volume", {})
+                v = float(v_dict.get(base_currency, 0.0)) if isinstance(v_dict, dict) else 0.0
                 result[pair] = {
                     "c": float(data["last"]),
                     "a": float(data["ask"]),
                     "b": float(data["bid"]),
+                    "v": v,  # 24 h base-asset volume
                 }
                 self.logger.debug(
-                    f"{pair}: last={data['last']} ask={data['ask']} bid={data['bid']}"
+                    f"{pair}: last={data['last']} ask={data['ask']} bid={data['bid']} vol={v}"
                 )
             except Exception as exc:
                 self.logger.warning(f"Gemini fetch failed for '{pair}': {exc}")
@@ -62,6 +67,6 @@ if __name__ == "__main__":
     ticker = GeminiTicker(pairs_yaml="Examples/gemini_pairs.yaml")
     while True:
         mq = ticker.get_market_query()
-        for entry in ("c", "a", "b"):
+        for entry in ("c", "a", "b", "v"):
             print(ticker.get_last_ticker(ticker_entry=entry, market_query=mq))
         time.sleep(60)
