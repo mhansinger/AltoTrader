@@ -43,6 +43,8 @@ services:
       INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_INIT_ADMIN_TOKEN}
       # Always use the Docker-internal hostname, never localhost
       INFLUX_URL:                 http://influxdb:8086
+      MODE:                       ${MODE:-rest}
+      EXCHANGE:                   ${EXCHANGE:-kraken}
 
 # ── Named volumes ─────────────────────────────────────────────────────────────
 volumes:
