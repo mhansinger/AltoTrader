@@ -35,7 +35,7 @@ def _make_ticker(tmp_path, pairs=None):
     return BinanceWsTicker(pairs_yaml=yaml_path)
 
 
-def _ticker_msg(unified_pair: str, c: str, a: str, b: str) -> str:
+def _ticker_msg(unified_pair: str, c: str, a: str, b: str, v: str = "1000.0") -> str:
     """Build a valid combined-stream 24hrTicker message.
 
     Accepts the unified pair name (e.g. 'BTC-EUR') and converts it to the
@@ -51,6 +51,7 @@ def _ticker_msg(unified_pair: str, c: str, a: str, b: str) -> str:
             "c": c,
             "a": a,
             "b": b,
+            "v": v,        # 24 h base-asset volume
         },
     })
 
@@ -67,11 +68,12 @@ def test_get_market_query_empty_before_start(tmp_path):
 class TestOnMessageValid:
     def test_single_pair_stored(self, tmp_path):
         ticker = _make_ticker(tmp_path)
-        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990"))
+        ticker._on_message(None, _ticker_msg("BTC-EUR", "60000", "60010", "59990", "2500.5"))
         assert "BTC-EUR" in ticker._prices
         assert ticker._prices["BTC-EUR"]["c"] == pytest.approx(60000.0)
         assert ticker._prices["BTC-EUR"]["a"] == pytest.approx(60010.0)
         assert ticker._prices["BTC-EUR"]["b"] == pytest.approx(59990.0)
+        assert ticker._prices["BTC-EUR"]["v"] == pytest.approx(2500.5)
 
     def test_two_pairs_stored_independently(self, tmp_path):
         ticker = _make_ticker(tmp_path)

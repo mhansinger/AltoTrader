@@ -1,13 +1,8 @@
 """MEXC REST ticker.
 
 MEXC's v3 API is largely compatible with Binance's API format.
-This ticker combines two lightweight endpoints:
-  - ``/api/v3/ticker/price``      → last price per symbol
-  - ``/api/v3/ticker/bookTicker`` → best bid/ask per symbol
-
-Both endpoints return data for all symbols when called without parameters,
-so we make only two requests per polling cycle regardless of how many pairs
-are configured.
+Uses the ``/api/v3/ticker/24hr`` endpoint which returns last price,
+ask, bid, and 24 h volume in a single request.
 
 Pair format: ``BTC-USDT``, ``ETH-BTC``, ``SOL-USDT`` …
 (unified hyphen-separated format; converted to ``BTCUSDT`` internally)
@@ -29,45 +24,36 @@ class MEXCTicker(RestBaseTicker):
     # _to_exchange_pair() inherited default: "BTC-USDT" → "BTCUSDT" ✓
 
     def get_market_query(self) -> Dict:
-        """Fetch last price + best bid/ask for all configured pairs.
+        """Fetch last price, bid/ask, and 24 h volume for all configured pairs.
 
-        Uses two bulk requests (price + bookTicker) and filters to the
-        configured pair list.
+        Uses a single bulk request to ``/ticker/24hr`` which provides all
+        fields (last price, ask, bid, volume) in one call.
 
         Returns:
-            Normalised dict ``{unified_pair: {c, a, b}}``.
+            Normalised dict ``{unified_pair: {c, a, b, v}}``.
         """
         try:
             reverse = self._exchange_to_unified_map()  # BTCUSDT → BTC-USDT
 
-            price_data = self._get(f"{_BASE_URL}/ticker/price")
-            book_data  = self._get(f"{_BASE_URL}/ticker/bookTicker")
-
-            # Build lookup maps  {exchange_symbol → value}
-            price_map: Dict[str, float] = {}
-            for item in (price_data if isinstance(price_data, list) else [price_data]):
-                price_map[item["symbol"]] = float(item["price"])
-
-            book_map: Dict[str, Dict] = {}
-            for item in (book_data if isinstance(book_data, list) else [book_data]):
-                book_map[item["symbol"]] = {
-                    "a": float(item["askPrice"]),
-                    "b": float(item["bidPrice"]),
-                }
+            ticker_data = self._get(f"{_BASE_URL}/ticker/24hr")
+            if isinstance(ticker_data, dict):
+                ticker_data = [ticker_data]  # single-symbol response
 
             result: Dict = {}
-            for ex_sym, unified in reverse.items():
-                if ex_sym not in price_map or ex_sym not in book_map:
-                    self.logger.warning(f"MEXC: no data for pair '{unified}' ({ex_sym})")
+            for item in (ticker_data if isinstance(ticker_data, list) else []):
+                ex_sym  = item.get("symbol", "")
+                unified = reverse.get(ex_sym)
+                if unified is None:
                     continue
                 result[unified] = {
-                    "c": price_map[ex_sym],
-                    "a": book_map[ex_sym]["a"],
-                    "b": book_map[ex_sym]["b"],
+                    "c": float(item["lastPrice"]),
+                    "a": float(item["askPrice"]),
+                    "b": float(item["bidPrice"]),
+                    "v": float(item.get("volume", 0.0)),  # 24 h base-asset volume
                 }
                 self.logger.debug(
-                    f"{unified}: last={price_map[ex_sym]} "
-                    f"ask={book_map[ex_sym]['a']} bid={book_map[ex_sym]['b']}"
+                    f"{unified}: last={item['lastPrice']} ask={item['askPrice']} "
+                    f"bid={item['bidPrice']} vol={item.get('volume', 0)}"
                 )
 
             if result:
@@ -88,6 +74,6 @@ if __name__ == "__main__":
     ticker = MEXCTicker(pairs_yaml="Examples/mexc_pairs.yaml")
     while True:
         mq = ticker.get_market_query()
-        for entry in ("c", "a", "b"):
+        for entry in ("c", "a", "b", "v"):
             print(ticker.get_last_ticker(ticker_entry=entry, market_query=mq))
         time.sleep(60)

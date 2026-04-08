@@ -17,6 +17,7 @@ class _MockDataLoader:
         self.ticker_current = pd.DataFrame({pair: prices}, index=dates)
         self.ticker_ask     = pd.DataFrame({pair: prices * 1.001}, index=dates)
         self.ticker_bid     = pd.DataFrame({pair: prices * 0.999}, index=dates)
+        self.ticker_volume  = None   # volume not required for basic tests
         self.rolling_current_short = None
         self.rolling_current_long  = None
 

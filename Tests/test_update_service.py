@@ -177,5 +177,5 @@ class TestUpdatePairsTicker:
             )
 
         assert result is True
-        # 3 ticker entries (a, b, c) × 1 pair × 1 timestamp = 3 points total
-        assert sum(written_calls) == 3
+        # 4 ticker entries (a, b, c, v) × 1 pair × 1 timestamp = 4 points total
+        assert sum(written_calls) == 4

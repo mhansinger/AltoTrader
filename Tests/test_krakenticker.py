@@ -47,7 +47,9 @@ def test_load_yaml():
 
 @needs_real_krakenex
 @patch.object(krakenex.API, 'query_public',
-              return_value={"result": {"XETHZEUR": {"c": [1743.55]}}})
+              return_value={"result": {
+                  "XETHZEUR": {"c": [1743.55], "v": ["100.0", "850.5"]},
+              }})
 def test_get_market_query(mock_query_public):
     test_file_path = os.path.join(os.path.dirname(
         __file__), 'mock_data/mock_pairs.yaml')
@@ -59,13 +61,15 @@ def test_get_market_query(mock_query_public):
     # Result must be keyed by the unified pair name
     assert ETH_EUR in market_query
     assert market_query[ETH_EUR]["c"][0] == 1743.55
+    # Volume is normalised to 24 h value at index 0
+    assert market_query[ETH_EUR]["v"][0] == pytest.approx(850.5)
 
 
 @needs_real_krakenex
 @patch.object(krakenex.API, 'query_public',
               return_value={"result": {
-                  "XETHZEUR": {"c": [1743.55], "a": [1744.00], "b": [1743.00]},
-                  "XXBTZEUR": {"c": [78230.1], "a": [78250.0], "b": [78210.0]},
+                  "XETHZEUR": {"c": [1743.55], "a": [1744.00], "b": [1743.00], "v": ["100.0", "850.5"]},
+                  "XXBTZEUR": {"c": [78230.1], "a": [78250.0], "b": [78210.0], "v": ["50.0",  "412.3"]},
               }})
 def test_get_market_price_valid(mock_query_public):
     test_file_path = os.path.join(os.path.dirname(

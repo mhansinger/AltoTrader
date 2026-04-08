@@ -56,8 +56,10 @@ class TestBinanceTicker:
     def _binance_response(self):
         # Binance returns uppercase, no-hyphen symbols
         return [
-            {"symbol": "BTCEUR", "lastPrice": "60000.00", "askPrice": "60010.00", "bidPrice": "59990.00"},
-            {"symbol": "ETHBTC", "lastPrice": "0.050",    "askPrice": "0.0501",    "bidPrice": "0.0499"},
+            {"symbol": "BTCEUR", "lastPrice": "60000.00", "askPrice": "60010.00",
+             "bidPrice": "59990.00", "volume": "1234.5"},
+            {"symbol": "ETHBTC", "lastPrice": "0.050",    "askPrice": "0.0501",
+             "bidPrice": "0.0499", "volume": "5000.0"},
         ]
 
     def test_get_market_query_keyed_by_unified_pair(self, tmp_path):
@@ -69,6 +71,7 @@ class TestBinanceTicker:
         assert mq["BTC-EUR"]["c"] == pytest.approx(60000.0)
         assert mq["BTC-EUR"]["a"] == pytest.approx(60010.0)
         assert mq["BTC-EUR"]["b"] == pytest.approx(59990.0)
+        assert mq["BTC-EUR"]["v"] == pytest.approx(1234.5)
 
     def test_get_last_ticker_close(self, tmp_path):
         ticker = self._make(tmp_path)
@@ -108,7 +111,7 @@ class TestBinanceTicker:
         """Binance returns a plain dict (not a list) for single-symbol requests."""
         ticker = self._make(tmp_path)
         single = {"symbol": "BTCEUR", "lastPrice": "60000.00",
-                  "askPrice": "60010.00", "bidPrice": "59990.00"}
+                  "askPrice": "60010.00", "bidPrice": "59990.00", "volume": "500.0"}
         with patch("requests.get", return_value=_mock_response(single)):
             mq = ticker.get_market_query()
         assert "BTC-EUR" in mq
@@ -131,8 +134,8 @@ class TestCoinbaseTicker:
 
     def _response_for(self, pair: str):
         data = {
-            "BTC-EUR": {"price": "60000.00", "ask": "60010.00", "bid": "59990.00"},
-            "ETH-BTC": {"price": "0.050",    "ask": "0.0501",   "bid": "0.0499"},
+            "BTC-EUR": {"price": "60000.00", "ask": "60010.00", "bid": "59990.00", "volume": "800.0"},
+            "ETH-BTC": {"price": "0.050",    "ask": "0.0501",   "bid": "0.0499",   "volume": "3000.0"},
         }
         return data[pair]
 
@@ -145,6 +148,7 @@ class TestCoinbaseTicker:
         assert mq["BTC-EUR"]["c"] == pytest.approx(60000.0)
         assert mq["BTC-EUR"]["a"] == pytest.approx(60010.0)
         assert mq["BTC-EUR"]["b"] == pytest.approx(59990.0)
+        assert mq["BTC-EUR"]["v"] == pytest.approx(800.0)
 
     def test_partial_failure_still_returns_good_pairs(self, tmp_path):
         ticker = self._make(tmp_path)
@@ -183,8 +187,10 @@ class TestGeminiTicker:
 
     def _response_for(self, pair: str):
         data = {
-            "BTC-EUR": {"last": "60000.00", "ask": "60010.00", "bid": "59990.00"},
-            "ETH-BTC": {"last": "0.050",    "ask": "0.0501",   "bid": "0.0499"},
+            "BTC-EUR": {"last": "60000.00", "ask": "60010.00", "bid": "59990.00",
+                        "volume": {"BTC": "250.0", "EUR": "15000000", "timestamp": 1234567890}},
+            "ETH-BTC": {"last": "0.050",    "ask": "0.0501",   "bid": "0.0499",
+                        "volume": {"ETH": "5000.0", "BTC": "250.0", "timestamp": 1234567890}},
         }
         return data[pair]
 
@@ -196,6 +202,7 @@ class TestGeminiTicker:
         # Keys must be unified names, not Gemini's lowercase
         assert set(mq.keys()) == set(GEMINI_PAIRS)
         assert mq["BTC-EUR"]["c"] == pytest.approx(60000.0)
+        assert mq["BTC-EUR"]["v"] == pytest.approx(250.0)   # base-asset (BTC) volume
 
     def test_to_exchange_pair_converts_to_lowercase(self, tmp_path):
         """Gemini uses lowercase no-separator symbols internally."""
@@ -230,43 +237,37 @@ class TestMEXCTicker:
         from altotrader.ticker.mexcticker import MEXCTicker
         return MEXCTicker(pairs_yaml=_yaml_with_pairs(tmp_path, MEXC_PAIRS))
 
-    def _price_response(self):
-        # MEXC returns uppercase, no-hyphen symbols
+    def _24hr_response(self):
+        """MEXC /ticker/24hr response – single request with all fields."""
         return [
-            {"symbol": "BTCUSDT",  "price": "60000.00"},
-            {"symbol": "ETHBTC",   "price": "0.050"},
-            {"symbol": "OTHERUSD", "price": "1.0"},
+            {"symbol": "BTCUSDT",  "lastPrice": "60000.00", "askPrice": "60010.00",
+             "bidPrice": "59990.00", "volume": "1234.5"},
+            {"symbol": "ETHBTC",   "lastPrice": "0.050",    "askPrice": "0.0501",
+             "bidPrice": "0.0499", "volume": "5000.0"},
+            {"symbol": "OTHERUSD", "lastPrice": "1.0",      "askPrice": "1.01",
+             "bidPrice": "0.99",   "volume": "9999.0"},
         ]
 
-    def _book_response(self):
-        return [
-            {"symbol": "BTCUSDT",  "askPrice": "60010.00", "bidPrice": "59990.00"},
-            {"symbol": "ETHBTC",   "askPrice": "0.0501",   "bidPrice": "0.0499"},
-            {"symbol": "OTHERUSD", "askPrice": "1.01",     "bidPrice": "0.99"},
-        ]
-
-    def test_get_market_query_two_requests(self, tmp_path):
+    def test_get_market_query_one_request(self, tmp_path):
         ticker = self._make(tmp_path)
-        resps = [_mock_response(self._price_response()), _mock_response(self._book_response())]
-        with patch("requests.get", side_effect=resps) as mock_get:
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())) as mock_get:
             ticker.get_market_query()
-        assert mock_get.call_count == 2
+        assert mock_get.call_count == 1
 
     def test_get_market_query_keyed_by_unified(self, tmp_path):
         ticker = self._make(tmp_path)
-        resps = [_mock_response(self._price_response()), _mock_response(self._book_response())]
-        with patch("requests.get", side_effect=resps):
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         # Keys must be unified names ("BTC-USDT"), not exchange symbols ("BTCUSDT")
         assert set(mq.keys()) == set(MEXC_PAIRS)
         assert mq["BTC-USDT"]["c"] == pytest.approx(60000.0)
         assert mq["BTC-USDT"]["a"] == pytest.approx(60010.0)
         assert mq["BTC-USDT"]["b"] == pytest.approx(59990.0)
+        assert mq["BTC-USDT"]["v"] == pytest.approx(1234.5)
 
     def test_unknown_pair_excluded(self, tmp_path):
         ticker = self._make(tmp_path)
-        resps = [_mock_response(self._price_response()), _mock_response(self._book_response())]
-        with patch("requests.get", side_effect=resps):
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         assert "OTHERUSD" not in mq
         assert "OTHER-USD" not in mq
@@ -280,15 +281,20 @@ class TestMEXCTicker:
 
     def test_get_last_ticker_ask(self, tmp_path):
         ticker = self._make(tmp_path)
-        resps = [_mock_response(self._price_response()), _mock_response(self._book_response())]
-        with patch("requests.get", side_effect=resps):
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("a", market_query=mq)
         assert df["BTC-USDT"].iloc[0] == pytest.approx(60010.0)
 
+    def test_get_last_ticker_volume(self, tmp_path):
+        ticker = self._make(tmp_path)
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+            mq = ticker.get_market_query()
+        df = ticker.get_last_ticker("v", market_query=mq)
+        assert df["BTC-USDT"].iloc[0] == pytest.approx(1234.5)
+
     def test_timestamp_set(self, tmp_path):
         ticker = self._make(tmp_path)
-        resps = [_mock_response(self._price_response()), _mock_response(self._book_response())]
-        with patch("requests.get", side_effect=resps):
+        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
             ticker.get_market_query()
         assert ticker.timestamp_last_fetch is not None

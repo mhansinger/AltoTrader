@@ -39,9 +39,11 @@ class CoinbaseTicker(RestBaseTicker):
                     "c": float(data["price"]),
                     "a": float(data["ask"]),
                     "b": float(data["bid"]),
+                    "v": float(data.get("volume", 0.0)),  # 24 h base-asset volume
                 }
                 self.logger.debug(
-                    f"{pair}: last={data['price']} ask={data['ask']} bid={data['bid']}"
+                    f"{pair}: last={data['price']} ask={data['ask']} bid={data['bid']} "
+                    f"vol={data.get('volume', 0)}"
                 )
             except Exception as exc:
                 self.logger.warning(f"Coinbase fetch failed for '{pair}': {exc}")
@@ -60,6 +62,6 @@ if __name__ == "__main__":
     ticker = CoinbaseTicker(pairs_yaml="Examples/coinbase_pairs.yaml")
     while True:
         mq = ticker.get_market_query()
-        for entry in ("c", "a", "b"):
+        for entry in ("c", "a", "b", "v"):
             print(ticker.get_last_ticker(ticker_entry=entry, market_query=mq))
         time.sleep(60)

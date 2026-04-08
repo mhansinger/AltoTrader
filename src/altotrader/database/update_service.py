@@ -42,7 +42,7 @@ class TickerUpdateService:
         Retries the Kraken API fetch up to _MAX_RETRIES times with exponential backoff.
 
         Args:
-            ticker_entry: 'a', 'b', or 'c' (or None for all three)
+            ticker_entry: 'a', 'b', 'c', or 'v' (or None for all four)
             bucket: InfluxDB bucket name (falls back to INFLUXDB_INIT_BUCKET env var)
             org: InfluxDB organization (falls back to INFLUXDB_INIT_ORG env var)
             url: InfluxDB URL (falls back to INFLUX_URL env var)
@@ -66,7 +66,7 @@ class TickerUpdateService:
                 raise ValueError(
                     f"Missing configuration: {', '.join(missing)}")
 
-            ticker_entries = [ticker_entry] if ticker_entry else ["a", "b", "c"]
+            ticker_entries = [ticker_entry] if ticker_entry else ["a", "b", "c", "v"]
             all_points = []
 
             market_query = self._fetch_market_query_with_retry()
