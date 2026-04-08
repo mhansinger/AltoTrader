@@ -121,7 +121,7 @@ class RestBaseTicker(BaseTicker):
                 self.logger.warning(f"Field '{ticker_entry}' missing for pair '{pair}'")
                 continue
             prices.append({"timestamp": timestamp, "pair": pair, "price": float(price)})
-            self.logger.info(f"{pair} [{ticker_entry}] → {price}")
+            self.logger.debug(f"{pair} [{ticker_entry}] → {price}")
 
         if not prices:
             self.logger.warning("No valid prices found for any pair")

@@ -146,7 +146,7 @@ class KrakenTicker(BaseTicker):
                 market_prices.append(
                     {"timestamp": timestamp_now, "pair": pair, "price": current_price}
                 )
-                self.logger.info(f"{pair} -> {current_price}")
+                self.logger.debug(f"{pair} -> {current_price}")
 
             if not market_prices:
                 self.logger.warning("No valid market prices found.")
