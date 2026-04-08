@@ -86,13 +86,11 @@ class TestWritePoints:
 
     def test_returns_false_on_influx_error(self):
         service = _make_service()
-        with patch("altotrader.database.update_service.InfluxDBClient") as MockClient:
-            mock_ctx = MagicMock()
-            MockClient.return_value.__enter__ = MagicMock(return_value=mock_ctx)
-            MockClient.return_value.__exit__ = MagicMock(return_value=False)
-            mock_ctx.write_api.return_value.write.side_effect = InfluxDBError(
-                message="test error"
-            )
+        mock_client = MagicMock()
+        mock_client.write_api.return_value.write.side_effect = InfluxDBError(
+            message="test error"
+        )
+        with patch.object(service, "_get_client", return_value=mock_client):
             from influxdb_client import Point
             pts = [Point("kraken").field("price", 1.0)]
             result = service._write_points(pts, _VALID_CONFIG)
@@ -100,8 +98,7 @@ class TestWritePoints:
 
     def test_returns_false_on_connection_error(self):
         service = _make_service()
-        with patch("altotrader.database.update_service.InfluxDBClient") as MockClient:
-            MockClient.side_effect = ConnectionError("refused")
+        with patch.object(service, "_get_client", side_effect=ConnectionError("refused")):
             from influxdb_client import Point
             pts = [Point("kraken").field("price", 1.0)]
             result = service._write_points(pts, _VALID_CONFIG)

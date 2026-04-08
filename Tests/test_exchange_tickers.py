@@ -64,7 +64,7 @@ class TestBinanceTicker:
 
     def test_get_market_query_keyed_by_unified_pair(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._binance_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._binance_response())):
             mq = ticker.get_market_query()
         # Keys must be unified pair names, not exchange symbols
         assert set(mq.keys()) == set(BINANCE_PAIRS)
@@ -75,7 +75,7 @@ class TestBinanceTicker:
 
     def test_get_last_ticker_close(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._binance_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._binance_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("c", market_query=mq)
         assert isinstance(df, pd.DataFrame)
@@ -84,14 +84,14 @@ class TestBinanceTicker:
 
     def test_get_last_ticker_ask(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._binance_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._binance_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("a", market_query=mq)
         assert df["BTC-EUR"].iloc[0] == pytest.approx(60010.0)
 
     def test_get_last_ticker_bid(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._binance_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._binance_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("b", market_query=mq)
         assert df["BTC-EUR"].iloc[0] == pytest.approx(59990.0)
@@ -103,7 +103,7 @@ class TestBinanceTicker:
 
     def test_http_error_returns_empty_dict(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response({}, status_code=500)):
+        with patch("requests.Session.get", return_value=_mock_response({}, status_code=500)):
             mq = ticker.get_market_query()
         assert mq == {}
 
@@ -112,13 +112,13 @@ class TestBinanceTicker:
         ticker = self._make(tmp_path)
         single = {"symbol": "BTCEUR", "lastPrice": "60000.00",
                   "askPrice": "60010.00", "bidPrice": "59990.00", "volume": "500.0"}
-        with patch("requests.get", return_value=_mock_response(single)):
+        with patch("requests.Session.get", return_value=_mock_response(single)):
             mq = ticker.get_market_query()
         assert "BTC-EUR" in mq
 
     def test_timestamp_set_after_fetch(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._binance_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._binance_response())):
             ticker.get_market_query()
         assert ticker.timestamp_last_fetch is not None
 
@@ -142,7 +142,7 @@ class TestCoinbaseTicker:
     def test_get_market_query_both_pairs(self, tmp_path):
         ticker = self._make(tmp_path)
         responses = [_mock_response(self._response_for(p)) for p in COINBASE_PAIRS]
-        with patch("requests.get", side_effect=responses):
+        with patch("requests.Session.get", side_effect=responses):
             mq = ticker.get_market_query()
         assert set(mq.keys()) == set(COINBASE_PAIRS)
         assert mq["BTC-EUR"]["c"] == pytest.approx(60000.0)
@@ -154,7 +154,7 @@ class TestCoinbaseTicker:
         ticker = self._make(tmp_path)
         good  = _mock_response(self._response_for("BTC-EUR"))
         error = _mock_response({}, status_code=503)
-        with patch("requests.get", side_effect=[good, error]):
+        with patch("requests.Session.get", side_effect=[good, error]):
             mq = ticker.get_market_query()
         assert "BTC-EUR" in mq
         assert "ETH-BTC" not in mq
@@ -162,7 +162,7 @@ class TestCoinbaseTicker:
     def test_get_last_ticker_shape(self, tmp_path):
         ticker = self._make(tmp_path)
         responses = [_mock_response(self._response_for(p)) for p in COINBASE_PAIRS]
-        with patch("requests.get", side_effect=responses):
+        with patch("requests.Session.get", side_effect=responses):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("c", market_query=mq)
         assert df.shape == (1, len(COINBASE_PAIRS))
@@ -170,7 +170,7 @@ class TestCoinbaseTicker:
     def test_all_fail_returns_empty(self, tmp_path):
         ticker = self._make(tmp_path)
         errors = [_mock_response({}, status_code=503)] * len(COINBASE_PAIRS)
-        with patch("requests.get", side_effect=errors):
+        with patch("requests.Session.get", side_effect=errors):
             mq = ticker.get_market_query()
         assert mq == {}
         assert ticker.get_last_ticker("c", market_query=mq).empty
@@ -197,7 +197,7 @@ class TestGeminiTicker:
     def test_get_market_query_normalised(self, tmp_path):
         ticker = self._make(tmp_path)
         responses = [_mock_response(self._response_for(p)) for p in GEMINI_PAIRS]
-        with patch("requests.get", side_effect=responses):
+        with patch("requests.Session.get", side_effect=responses):
             mq = ticker.get_market_query()
         # Keys must be unified names, not Gemini's lowercase
         assert set(mq.keys()) == set(GEMINI_PAIRS)
@@ -214,7 +214,7 @@ class TestGeminiTicker:
         ticker = self._make(tmp_path)
         good  = _mock_response(self._response_for("BTC-EUR"))
         error = _mock_response({}, status_code=404)
-        with patch("requests.get", side_effect=[good, error]):
+        with patch("requests.Session.get", side_effect=[good, error]):
             mq = ticker.get_market_query()
         assert "BTC-EUR" in mq
         assert "ETH-BTC" not in mq
@@ -222,7 +222,7 @@ class TestGeminiTicker:
     def test_get_last_ticker_bid(self, tmp_path):
         ticker = self._make(tmp_path)
         responses = [_mock_response(self._response_for(p)) for p in GEMINI_PAIRS]
-        with patch("requests.get", side_effect=responses):
+        with patch("requests.Session.get", side_effect=responses):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("b", market_query=mq)
         assert df["BTC-EUR"].iloc[0] == pytest.approx(59990.0)
@@ -250,13 +250,13 @@ class TestMEXCTicker:
 
     def test_get_market_query_one_request(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())) as mock_get:
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())) as mock_get:
             ticker.get_market_query()
         assert mock_get.call_count == 1
 
     def test_get_market_query_keyed_by_unified(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         # Keys must be unified names ("BTC-USDT"), not exchange symbols ("BTCUSDT")
         assert set(mq.keys()) == set(MEXC_PAIRS)
@@ -267,7 +267,7 @@ class TestMEXCTicker:
 
     def test_unknown_pair_excluded(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         assert "OTHERUSD" not in mq
         assert "OTHER-USD" not in mq
@@ -275,26 +275,26 @@ class TestMEXCTicker:
     def test_http_error_returns_empty(self, tmp_path):
         ticker = self._make(tmp_path)
         error = _mock_response({}, status_code=500)
-        with patch("requests.get", return_value=error):
+        with patch("requests.Session.get", return_value=error):
             mq = ticker.get_market_query()
         assert mq == {}
 
     def test_get_last_ticker_ask(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("a", market_query=mq)
         assert df["BTC-USDT"].iloc[0] == pytest.approx(60010.0)
 
     def test_get_last_ticker_volume(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())):
             mq = ticker.get_market_query()
         df = ticker.get_last_ticker("v", market_query=mq)
         assert df["BTC-USDT"].iloc[0] == pytest.approx(1234.5)
 
     def test_timestamp_set(self, tmp_path):
         ticker = self._make(tmp_path)
-        with patch("requests.get", return_value=_mock_response(self._24hr_response())):
+        with patch("requests.Session.get", return_value=_mock_response(self._24hr_response())):
             ticker.get_market_query()
         assert ticker.timestamp_last_fetch is not None

@@ -22,15 +22,28 @@ class TickerUpdateService:
         """Initialize with a ticker provider instance.
 
         Args:
-            ticker_provider: An object that implements get_market_price() 
+            ticker_provider: An object that implements get_market_price()
                             (e.g., KrakenTicker instance)
         """
         self.ticker = ticker
         self._ticker_entry = None
+        self._influx_client: Optional[InfluxDBClient] = None
 
         setup_logging(log_filename='ticker_update.logs', log_dir=log_dir)
 
         self.logger = logging.getLogger(__name__)
+
+    def _get_client(self, url: str, token: str) -> InfluxDBClient:
+        """Return a cached InfluxDBClient, creating one if needed."""
+        if self._influx_client is None:
+            self._influx_client = InfluxDBClient(url=url, token=token, timeout=10_000)
+        return self._influx_client
+
+    def close(self) -> None:
+        """Close the cached InfluxDB client."""
+        if self._influx_client is not None:
+            self._influx_client.close()
+            self._influx_client = None
 
     def update_pairs_ticker(self,
                             ticker_entry: Optional[str] = None,
@@ -55,9 +68,10 @@ class TickerUpdateService:
         try:
             influx_config = {
                 "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
-                "org": org or os.getenv("INFLUXDB_INIT_ORG"),
-                "url": url or os.getenv("INFLUX_URL"),
-                "token": token or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN")
+                "org":    org    or os.getenv("INFLUXDB_INIT_ORG"),
+                "url":    url    or os.getenv("INFLUX_URL"),
+                "token":  token  or os.getenv("INFLUXDB_WRITE_TOKEN")
+                                 or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN"),
             }
 
             # Validate configuration
@@ -185,28 +199,25 @@ class TickerUpdateService:
             return False
 
         try:
-            with InfluxDBClient(
-                url=config["url"],
-                token=config["token"],
-                timeout=30_000
-            ) as client:
-                write_api = client.write_api(write_options=SYNCHRONOUS)
-                write_api.write(
-                    bucket=config["bucket"],
-                    org=config["org"],
-                    record=points
-                )
-                self.logger.info("Write completed successfully")
-                return True
+            client = self._get_client(config["url"], config["token"])
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            write_api.write(
+                bucket=config["bucket"],
+                org=config["org"],
+                record=points
+            )
+            self.logger.info("Write completed successfully")
+            return True
 
         except InfluxDBError as e:
             self.logger.error(f"InfluxDB write failed: {str(e)}")
             if hasattr(e, 'response') and e.response:
                 self.logger.error(f"Response details: {e.response.text}")
+            self._influx_client = None  # reset on error so next attempt reconnects
             return False
         except Exception as e:
-            # Catches ConnectionError, TimeoutError, etc. so retry logic still works
             self.logger.error(f"Unexpected error writing to InfluxDB: {str(e)}")
+            self._influx_client = None
             return False
 
     def _write_points_with_retry(self, points: list, config: dict) -> bool:

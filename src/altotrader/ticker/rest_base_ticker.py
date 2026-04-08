@@ -47,6 +47,7 @@ class RestBaseTicker(BaseTicker):
         self.pairs_list: List[str] = self.load_yaml(pairs_yaml)
         self.timeout = timeout
         self._timestamp_last_fetch = None
+        self._session = requests.Session()
 
         setup_logging(log_filename=f"{self.EXCHANGE}_ticker.logs", log_dir=log_dir)
         self.logger = logging.getLogger(f"{__name__}.{self.EXCHANGE}")
@@ -77,7 +78,7 @@ class RestBaseTicker(BaseTicker):
 
     def _get(self, url: str, **kwargs) -> dict | list:
         """GET *url* and return parsed JSON.  Raises on HTTP or network errors."""
-        resp = requests.get(url, timeout=self.timeout, **kwargs)
+        resp = self._session.get(url, timeout=self.timeout, **kwargs)
         resp.raise_for_status()
         return resp.json()
 

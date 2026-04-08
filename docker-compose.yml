@@ -6,7 +6,7 @@ services:
     container_name: altotrader_influxdb
     restart: unless-stopped
     ports:
-      - "8086:8086"      # InfluxDB UI (http://<hetzner-ip>:8086) + API
+      - "127.0.0.1:8086:8086"   # InfluxDB UI + API – localhost only; use SSH tunnel to access remotely
     environment:
       # First-run auto-setup: only applied when the DB is uninitialized.
       # Values come from the .env file in the project root.
@@ -40,6 +40,7 @@ services:
     environment:
       INFLUXDB_INIT_BUCKET:       ${INFLUXDB_INIT_BUCKET}
       INFLUXDB_INIT_ORG:          ${INFLUXDB_INIT_ORG}
+      INFLUXDB_WRITE_TOKEN:       ${INFLUXDB_WRITE_TOKEN:-}
       INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_INIT_ADMIN_TOKEN}
       # Always use the Docker-internal hostname, never localhost
       INFLUX_URL:                 http://influxdb:8086

@@ -226,7 +226,7 @@ def main():
                 target=run_fn,
                 args=(exchange, pair_yaml, stop_flag),
                 name=f"streamer-{exchange}",
-                daemon=True,
+                daemon=False,
             )
             t.start()
             threads.append(t)

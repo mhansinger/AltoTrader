@@ -1,6 +1,7 @@
 # ignored files
 venv
 .venv
+hetzner
 
 # Secrets – never commit actual env files
 .env
