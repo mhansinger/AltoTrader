@@ -33,6 +33,8 @@ _REST_TO_UNIFIED: Dict[str, str] = {v: k for k, v in KRAKEN_UNIFIED_TO_REST.item
 
 
 class KrakenTicker(BaseTicker):
+    EXCHANGE = "kraken"
+
     def __init__(self, pairs_yaml: str, log_dir: str = 'logs'):
         """
         Object streamt über krakenex.API die aktuellen Marktpreise.
@@ -102,7 +104,7 @@ class KrakenTicker(BaseTicker):
             pd.DataFrame: ticker values with timestamp index, columns = unified pairs
         """
 
-        self.logger.info(f"ticker_entry: {ticker_entry}")
+        self.logger.debug(f"ticker_entry: {ticker_entry}")
 
         valid_entries = {"c", "a", "b", "v"}
         if ticker_entry not in valid_entries:

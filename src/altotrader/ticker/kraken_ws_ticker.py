@@ -74,6 +74,8 @@ class KrakenWsTicker(BaseTicker):
     by the main thread (via get_market_query / get_last_ticker).
     """
 
+    EXCHANGE = "kraken"
+
     def __init__(self, pairs_yaml: str, log_dir: str = "logs"):
         self.pairs_list = self.load_yaml(pairs_yaml)
         self._timestamp_last_fetch: Optional[datetime] = None

@@ -165,11 +165,12 @@ class TickerUpdateService:
 
     def _generate_points(self, df: pd.DataFrame, ticker_entry: str) -> list:
         """Convert DataFrame to InfluxDB points."""
+        measurement = getattr(self.ticker, "EXCHANGE", "ticker")
         points = []
         for timestamp, row in df.iterrows():
             for pair, price in row.items():
                 points.append(
-                    Point("kraken")
+                    Point(measurement)
                     .tag("pair", pair)
                     .tag("ticker_entry", ticker_entry)
                     .field("price", float(price))
