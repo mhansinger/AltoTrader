@@ -81,9 +81,9 @@ class KrakenTicker(BaseTicker):
                 unified = _REST_TO_UNIFIED.get(rest_key)
                 if unified is not None:
                     entry = dict(data)
-                    # Normalise volume: Kraken v = [today, 24h] – expose 24 h at index 0
+                    # Normalise volume: Kraken v = [today, 24h] – expose 24 h at index 0 as float
                     if "v" in entry and isinstance(entry["v"], list) and len(entry["v"]) >= 2:
-                        entry["v"] = [entry["v"][1]]
+                        entry["v"] = [float(entry["v"][1])]
                     result[unified] = entry
 
             return result
