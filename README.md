@@ -104,41 +104,30 @@ INFLUX_URL=http://localhost:8086
 
 ## Data Streaming
 
-### REST polling (default)
+Select exchange and mode via `--exchange` / `--mode` flags or environment variables:
 
 ```bash
-python Examples/run_update_service.py --mode rest
-```
+# Kraken REST (default)
+python Examples/run_update_service.py
 
-### WebSocket (Kraken or Binance)
-
-```bash
 # Kraken WebSocket
 python Examples/run_update_service.py --mode websocket
 
-# Binance WebSocket (edit run_update_service.py to swap ticker)
+# Binance REST
+python Examples/run_update_service.py --exchange binance
+
+# Binance WebSocket
+python Examples/run_update_service.py --exchange binance --mode websocket
+
+# Gemini / Coinbase / MEXC (REST only)
+python Examples/run_update_service.py --exchange gemini
 ```
 
-### Selecting an exchange
-
-Edit `Examples/run_update_service.py` (or pass `--mode`) and swap the ticker:
-
-```python
-from altotrader.ticker.binanceticker      import BinanceTicker
-from altotrader.ticker.binance_ws_ticker  import BinanceWsTicker
-from altotrader.ticker.coinbaseticker     import CoinbaseTicker
-from altotrader.ticker.geminiticker       import GeminiTicker
-from altotrader.ticker.mexcticker         import MEXCTicker
-from altotrader.ticker.krakenticker       import KrakenTicker
-from altotrader.ticker.kraken_ws_ticker   import KrakenWsTicker
-
-ticker = BinanceTicker(pairs_yaml="Examples/binance_pairs.yaml")
-service = TickerUpdateService(ticker)
-```
-
-All tickers are drop-in replacements – `TickerUpdateService` works with any of them.
+WebSocket mode is available for `kraken` and `binance` only.
 
 ### Pairs YAML
+
+Each exchange has its own pairs file in `Examples/`. Edit to add or remove pairs:
 
 ```yaml
 # Examples/binance_pairs.yaml
@@ -147,6 +136,8 @@ items:
   - ETH-EUR
   - ETH-BTC
 ```
+
+Pass a custom file with `--pairs Examples/my_pairs.yaml`.
 
 ---
 
@@ -160,11 +151,27 @@ docker compose up --build -d
 
 The InfluxDB dashboard is available at **http://localhost:8086** (or your server's IP).
 
-To use a different exchange, set the `MODE` environment variable:
+Control exchange and mode via environment variables:
 
 ```bash
-MODE=websocket docker compose up -d
+# Binance WebSocket
+EXCHANGE=binance MODE=websocket docker compose up --build -d
+
+# Gemini REST
+EXCHANGE=gemini docker compose up -d
 ```
+
+Or set them permanently in `.env`:
+
+```dotenv
+EXCHANGE=binance
+MODE=websocket
+```
+
+| Variable | Default | Options |
+|---|---|---|
+| `EXCHANGE` | `kraken` | `kraken`, `binance`, `coinbase`, `gemini`, `mexc` |
+| `MODE` | `rest` | `rest`, `websocket` (kraken + binance only) |
 
 ---
 

@@ -36,7 +36,7 @@ class BinanceTicker(RestBaseTicker):
 
             params: dict = {}
             if exchange_pairs:
-                params["symbols"] = json.dumps(exchange_pairs)
+                params["symbols"] = json.dumps(exchange_pairs, separators=(",", ":"))
 
             data = self._get(f"{_BASE_URL}/ticker/24hr", params=params)
             if isinstance(data, dict):
