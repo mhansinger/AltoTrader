@@ -60,7 +60,7 @@ EXCHANGE_PAIRS_YAML = {
     "mexc":     "Examples/mexc_pairs.yaml",
 }
 WS_EXCHANGES = {"kraken", "binance"}
-DEFAULT_EXCHANGES = "kraken,binance,gemini"
+DEFAULT_EXCHANGES = "kraken,binance"
 # ───────────────────────────────────────────────────────────────────────────────
 
 

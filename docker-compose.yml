@@ -45,7 +45,7 @@ services:
       # Always use the Docker-internal hostname, never localhost
       INFLUX_URL:                 http://influxdb:8086
       MODE:                       ${MODE:-rest}
-      EXCHANGES:                  "${EXCHANGES:-kraken,binance,gemini}"
+      EXCHANGES:                  "${EXCHANGES:-kraken,binance}"
 
 # ── Named volumes ─────────────────────────────────────────────────────────────
 volumes:
