@@ -26,45 +26,62 @@ class BinanceTicker(RestBaseTicker):
     def get_market_query(self) -> Dict:
         """Fetch 24-hour ticker stats for all configured pairs.
 
+        Tries a single batch request first. If Binance rejects it (e.g. one
+        invalid symbol causes a 400), falls back to individual requests so that
+        valid pairs are still collected.
+
         Returns:
-            Normalised dict ``{unified_pair: {c, a, b}}``
-            (e.g. ``{"BTC-EUR": {"c": 60000.0, "a": 60010.0, "b": 59990.0}}``).
+            Normalised dict ``{unified_pair: {c, a, b, v}}``
         """
+        exchange_pairs = [self._to_exchange_pair(p) for p in self.pairs_list]
+        reverse        = self._exchange_to_unified_map()
+
         try:
-            exchange_pairs = [self._to_exchange_pair(p) for p in self.pairs_list]
-            reverse        = self._exchange_to_unified_map()  # BTCEUR → BTC-EUR
-
-            params: dict = {}
-            if exchange_pairs:
-                params["symbols"] = json.dumps(exchange_pairs, separators=(",", ":"))
-
-            data = self._get(f"{_BASE_URL}/ticker/24hr", params=params)
+            params = {"symbols": json.dumps(exchange_pairs, separators=(",", ":"))}
+            data   = self._get(f"{_BASE_URL}/ticker/24hr", params=params)
             if isinstance(data, dict):
-                data = [data]   # single-symbol response is a plain dict
-
-            result: Dict = {}
-            for item in data:
-                ex_sym   = item["symbol"]
-                unified  = reverse.get(ex_sym)
-                if unified is None:
-                    continue
-                result[unified] = {
-                    "c": float(item["lastPrice"]),
-                    "a": float(item["askPrice"]),
-                    "b": float(item["bidPrice"]),
-                    "v": float(item.get("volume", 0.0)),  # 24 h base-asset volume
-                }
-
-            if result:
-                self.timestamp_last_fetch = self.current_timestamp()
-            else:
-                self.logger.warning("Binance returned no data for requested pairs")
-
-            return result
-
+                data = [data]
+            result = self._parse(data, reverse)
         except Exception as exc:
-            self.logger.error(f"Binance market query failed: {exc}")
-            return {}
+            self.logger.warning(
+                f"Binance batch request failed ({exc}), falling back to individual requests"
+            )
+            result = self._fetch_individually(exchange_pairs, reverse)
+
+        if result:
+            self.timestamp_last_fetch = self.current_timestamp()
+        else:
+            self.logger.warning("Binance returned no data for any pair")
+        return result
+
+    def _parse(self, data: list, reverse: Dict) -> Dict:
+        result: Dict = {}
+        for item in data:
+            unified = reverse.get(item["symbol"])
+            if unified is None:
+                continue
+            result[unified] = {
+                "c": float(item["lastPrice"]),
+                "a": float(item["askPrice"]),
+                "b": float(item["bidPrice"]),
+                "v": float(item.get("volume", 0.0)),
+            }
+        return result
+
+    def _fetch_individually(self, exchange_pairs: list, reverse: Dict) -> Dict:
+        result: Dict = {}
+        for ex_sym in exchange_pairs:
+            try:
+                data = self._get(f"{_BASE_URL}/ticker/24hr", params={"symbol": ex_sym})
+                if isinstance(data, dict):
+                    data = [data]
+                result.update(self._parse(data, reverse))
+            except Exception as exc:
+                # Extract HTTP status code if available, otherwise show full error
+                status = getattr(getattr(exc, 'response', None), 'status_code', None)
+                reason = f"HTTP {status}" if status else str(exc).split("\n")[0]
+                self.logger.warning(f"Binance: skipping {ex_sym} – {reason}")
+        return result
 
 
 if __name__ == "__main__":

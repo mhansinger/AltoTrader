@@ -212,7 +212,9 @@ class TickerUpdateService:
         except InfluxDBError as e:
             self.logger.error(f"InfluxDB write failed: {str(e)}")
             if hasattr(e, 'response') and e.response:
-                self.logger.error(f"Response details: {e.response.text}")
+                body = getattr(e.response, 'data', None) or getattr(e.response, 'text', None)
+                if body:
+                    self.logger.error(f"Response details: {body}")
             self._influx_client = None  # reset on error so next attempt reconnects
             return False
         except Exception as e:
