@@ -1,0 +1,28 @@
+services:
+  altotrader_trader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: altotrader_trader
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      EXCHANGE:           ${TRADER_EXCHANGE:-kraken}
+      PAIR:               ${TRADER_PAIR:-BTC-EUR}
+      WINDOW_SHORT:       ${TRADER_WINDOW_SHORT:-50}
+      WINDOW_LONG:        ${TRADER_WINDOW_LONG:-200}
+      INITIAL_INVEST:     ${TRADER_INITIAL_INVEST:-1000}
+      POLL_INTERVAL:      ${TRADER_POLL_INTERVAL:-60}
+      PAPER_TRADING:      ${TRADER_PAPER_TRADING:-true}
+      KRAKEN_API_KEY:     ${KRAKEN_API_KEY:-}
+      KRAKEN_API_SECRET:  ${KRAKEN_API_SECRET:-}
+      BINANCE_API_KEY:    ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+    volumes:
+      - trader_logs:/app/logs      # positions.json + logs persist across restarts
+
+    command: ["python", "Examples/run_trading_bot.py"]
+
+volumes:
+  trader_logs:
