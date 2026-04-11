@@ -13,11 +13,17 @@ Usage examples:
     python Examples/run_trading_bot.py --exchange kraken --pair BTC-EUR \\
         --short 5 --long 20 --poll 10 --paper
 
+    # Pre-warm SignalGenerator from Hetzner InfluxDB via SSH tunnel:
+    #   ssh -L 8086:localhost:8086 root@<hetzner-ip> -N &
+    python Examples/run_trading_bot.py --exchange kraken --pair BTC-EUR \\
+        --warmup --influx-url http://localhost:8086
+
 Environment variables (alternative to flags):
     EXCHANGE, PAIR, WINDOW_SHORT, WINDOW_LONG, INITIAL_INVEST,
     POLL_INTERVAL, PAPER_TRADING=true|false
     KRAKEN_API_KEY, KRAKEN_API_SECRET
     BINANCE_API_KEY, BINANCE_API_SECRET
+    INFLUX_URL, INFLUXDB_INIT_ADMIN_TOKEN, INFLUXDB_INIT_ORG, INFLUXDB_INIT_BUCKET
 """
 from __future__ import annotations
 
@@ -55,6 +61,21 @@ def _parse_args() -> argparse.Namespace:
                    default=os.environ.get("PAPER_TRADING", "true").lower() == "true",
                    help="Paper trading mode (no real orders)")
     p.add_argument("--log-dir",  default="logs", help="Log directory")
+
+    # ── InfluxDB warm-up (optional) ──────────────────────────────────────────
+    p.add_argument("--warmup", action="store_true",
+                   default=os.environ.get("WARMUP_FROM_INFLUXDB", "false").lower() == "true",
+                   help="Pre-seed SMA buffer from InfluxDB history before trading starts")
+    p.add_argument("--influx-url",    default=os.environ.get("INFLUX_URL"),
+                   help="InfluxDB URL for warm-up (e.g. http://localhost:8086)")
+    p.add_argument("--influx-token",  default=os.environ.get("INFLUXDB_INIT_ADMIN_TOKEN"),
+                   help="InfluxDB API token")
+    p.add_argument("--influx-org",    default=os.environ.get("INFLUXDB_INIT_ORG"),
+                   help="InfluxDB organisation")
+    p.add_argument("--influx-bucket", default=os.environ.get("INFLUXDB_INIT_BUCKET"),
+                   help="InfluxDB bucket")
+    p.add_argument("--warmup-days",   type=int, default=7,
+                   help="How many days of history to use for warm-up (default: 7)")
     return p.parse_args()
 
 
@@ -129,6 +150,31 @@ def main() -> None:
         risk_mgr=risk_mgr,
         log_dir=args.log_dir,
     )
+
+    # ── Optional: pre-warm SignalGenerator from InfluxDB ────────────────────
+    if args.warmup:
+        missing = [name for name, val in [
+            ("--influx-url",    args.influx_url),
+            ("--influx-token",  args.influx_token),
+            ("--influx-org",    args.influx_org),
+            ("--influx-bucket", args.influx_bucket),
+        ] if not val]
+        if missing:
+            logger.warning(
+                f"Warm-up skipped – missing InfluxDB parameters: {', '.join(missing)}. "
+                "Set via flags or env vars (INFLUX_URL, INFLUXDB_INIT_ADMIN_TOKEN, "
+                "INFLUXDB_INIT_ORG, INFLUXDB_INIT_BUCKET)."
+            )
+        else:
+            n = engine.warmup_from_influxdb(
+                url=args.influx_url,
+                token=args.influx_token,
+                org=args.influx_org,
+                bucket=args.influx_bucket,
+                days=args.warmup_days,
+            )
+            if n == 0:
+                logger.warning("Warm-up returned 0 prices – bot will warm up organically.")
 
     # Graceful shutdown on SIGTERM / SIGINT
     def _shutdown(sig, frame):

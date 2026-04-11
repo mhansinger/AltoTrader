@@ -16,6 +16,8 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
+_WARMUP_DAYS_DEFAULT = 7  # how far back to look for historical prices
+
 from altotrader.logging_config import setup_logging
 from altotrader.trader.broker.base_broker import BaseBroker
 from altotrader.trader.config import TradingConfig
@@ -72,6 +74,83 @@ class TradingEngine(threading.Thread):
             f"stop_loss={config.stop_loss_pct*100:.1f}% | "
             f"invest={config.initial_invest} {config.quote_currency}"
         )
+
+    # ── Warm-up ───────────────────────────────────────────────────────────────
+
+    def warmup_from_influxdb(
+        self,
+        url: str,
+        token: str,
+        org: str,
+        bucket: str,
+        days: int = _WARMUP_DAYS_DEFAULT,
+    ) -> int:
+        """Pre-seed the SignalGenerator with historical 'c' prices from InfluxDB.
+
+        Queries the last ``config.min_prices`` close prices for ``config.pair``
+        and feeds them into the SignalGenerator so the bot is ready to emit
+        signals immediately on startup instead of waiting for ``window_long``
+        new ticks to arrive.
+
+        Args:
+            url:    InfluxDB URL (e.g. ``http://localhost:8086``).
+            token:  InfluxDB API token.
+            org:    InfluxDB organisation.
+            bucket: InfluxDB bucket.
+            days:   How many days back to search for prices (default 7).
+
+        Returns:
+            Number of prices loaded.  0 means InfluxDB was unreachable or
+            had no data – the engine will still start and warm up organically.
+        """
+        try:
+            from influxdb_client import InfluxDBClient  # lazy import
+        except ImportError:
+            self.logger.warning("influxdb-client not installed – skipping warm-up")
+            return 0
+
+        n = self.config.min_prices
+        query = f"""
+            from(bucket: "{bucket}")
+              |> range(start: -{days}d)
+              |> filter(fn: (r) => r["_measurement"] == "{self.config.exchange}")
+              |> filter(fn: (r) => r["_field"] == "price")
+              |> filter(fn: (r) => r["ticker_entry"] == "c")
+              |> filter(fn: (r) => r["pair"] == "{self.config.pair}")
+              |> sort(columns: ["_time"])
+              |> tail(n: {n})
+        """
+
+        try:
+            with InfluxDBClient(url=url, token=token, org=org, timeout=30_000) as client:
+                result = client.query_api().query(query)
+
+            prices = [
+                float(record.get_value())
+                for table in result
+                for record in table.records
+            ]
+
+            if not prices:
+                self.logger.warning(
+                    f"Warm-up: no historical 'c' prices found for {self.config.pair} "
+                    f"in the last {days} days"
+                )
+                return 0
+
+            for price in prices:
+                self._signal_gen.update(price)
+
+            self.logger.info(
+                f"Warm-up: loaded {len(prices)} historical prices "
+                f"(warmed_up={self._signal_gen.is_warmed_up}, "
+                f"need={self.config.min_prices})"
+            )
+            return len(prices)
+
+        except Exception as exc:
+            self.logger.warning(f"Warm-up from InfluxDB failed (will warm up live): {exc}")
+            return 0
 
     # ── Thread entry point ────────────────────────────────────────────────────
 

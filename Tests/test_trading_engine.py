@@ -190,3 +190,66 @@ class TestTradingEngineThread:
         engine.stop()
         engine.join(timeout=2.0)
         assert not engine.is_alive()
+
+
+class TestWarmupFromInfluxdb:
+    """Tests for warmup_from_influxdb()."""
+
+    def _make_influx_record(self, value: float):
+        r = MagicMock()
+        r.get_value.return_value = value
+        return r
+
+    def _make_influx_result(self, prices: list[float]):
+        table = MagicMock()
+        table.records = [self._make_influx_record(p) for p in prices]
+        return [table]
+
+    def test_warmup_seeds_signal_generator(self, cfg, broker, pos_mgr, risk_mgr, tmp_path):
+        engine = _make_engine(cfg, MagicMock(), broker, pos_mgr, risk_mgr, tmp_path)
+        prices = [100.0] * cfg.min_prices
+
+        mock_result = self._make_influx_result(prices)
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.query_api.return_value.query.return_value = mock_result
+
+        with patch("influxdb_client.InfluxDBClient", return_value=mock_client):
+            n = engine.warmup_from_influxdb(
+                url="http://localhost:8086", token="tok", org="org", bucket="b"
+            )
+
+        assert n == cfg.min_prices
+        assert engine._signal_gen.is_warmed_up
+
+    def test_warmup_returns_zero_on_empty_result(self, cfg, broker, pos_mgr, risk_mgr, tmp_path):
+        engine = _make_engine(cfg, MagicMock(), broker, pos_mgr, risk_mgr, tmp_path)
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.query_api.return_value.query.return_value = []  # empty
+
+        with patch("influxdb_client.InfluxDBClient", return_value=mock_client):
+            n = engine.warmup_from_influxdb(
+                url="http://localhost:8086", token="tok", org="org", bucket="b"
+            )
+
+        assert n == 0
+        assert not engine._signal_gen.is_warmed_up
+
+    def test_warmup_returns_zero_on_influxdb_error(self, cfg, broker, pos_mgr, risk_mgr, tmp_path):
+        engine = _make_engine(cfg, MagicMock(), broker, pos_mgr, risk_mgr, tmp_path)
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.query_api.return_value.query.side_effect = Exception("connection refused")
+
+        with patch("influxdb_client.InfluxDBClient", return_value=mock_client):
+            n = engine.warmup_from_influxdb(
+                url="http://localhost:8086", token="tok", org="org", bucket="b"
+            )
+
+        assert n == 0
