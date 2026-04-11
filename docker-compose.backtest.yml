@@ -1,0 +1,64 @@
+services:
+
+  # ── Backtest runner ───────────────────────────────────────────────────────────
+  # Runs once, exports data from InfluxDB, executes grid search, writes results.
+  # Restart manually when you want a fresh run:
+  #   docker compose -f docker-compose.backtest.yml run --rm altotrader_backtest
+  altotrader_backtest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: altotrader_backtest
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      BACKTEST_PAIRS:          ${BACKTEST_PAIRS:-BTC-EUR,ETH-EUR}
+      BACKTEST_EXCHANGE:       ${BACKTEST_EXCHANGE:-kraken}
+      BACKTEST_DAYS:           ${BACKTEST_DAYS:-30}
+      BACKTEST_SHORT_WINDOWS:  ${BACKTEST_SHORT_WINDOWS:-10,20,50,100}
+      BACKTEST_LONG_WINDOWS:   ${BACKTEST_LONG_WINDOWS:-100,200,300,500}
+      RESULTS_DIR:             /app/results
+      # InfluxDB connection – uses internal Docker hostname when streamer stack is running
+      INFLUX_URL:              ${INFLUX_URL:-http://influxdb:8086}
+      INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
+      INFLUXDB_INIT_ORG:       ${INFLUXDB_INIT_ORG}
+      INFLUXDB_INIT_BUCKET:    ${INFLUXDB_INIT_BUCKET}
+    volumes:
+      - backtest_results:/app/results
+    command: ["python", "Examples/run_backtest.py"]
+    networks:
+      - altotrader_default
+
+  # ── Streamlit dashboard ───────────────────────────────────────────────────────
+  # Runs permanently. Access via SSH tunnel:
+  #   ssh -L 8501:localhost:8501 root@<hetzner-ip> -N
+  #   → http://localhost:8501
+  altotrader_dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: altotrader_dashboard
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"     # localhost only – use SSH tunnel for remote access
+    environment:
+      RESULTS_DIR: /app/results
+    volumes:
+      - backtest_results:/app/results
+    command:
+      - streamlit
+      - run
+      - Examples/backtest_dashboard.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    networks:
+      - altotrader_default
+
+volumes:
+  backtest_results:
+
+networks:
+  altotrader_default:
+    external: true    # shared with the streamer stack (docker-compose.yml)
