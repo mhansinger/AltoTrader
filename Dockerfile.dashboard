@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r altotrader && useradd -r -g altotrader altotrader
+
+WORKDIR /app
+
+COPY pyproject.toml .
+COPY src/ src/
+RUN pip install --no-cache-dir ".[dashboard]"
+
+COPY Examples/ Examples/
+
+RUN mkdir -p results && chown -R altotrader:altotrader /app
+
+USER altotrader
+
+EXPOSE 8501

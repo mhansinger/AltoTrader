@@ -22,18 +22,25 @@ def export_prices(path_to_parquet: str,
                   bucket: Optional[str] = None,
                   org: Optional[str] = None,
                   url: Optional[str] = None,
-                  token: Optional[str] = None) -> bool:
+                  token: Optional[str] = None,
+                  measurement: Optional[str] = None) -> bool:
     """Export latest prices from InfluxDB to parquet or csv.
 
     Retries each ticker entry up to _MAX_RETRIES times with exponential backoff
     on transient InfluxDB or network errors.
+
+    Args:
+        measurement: InfluxDB measurement name to filter on (e.g. ``"kraken"``
+                     or ``"binance"``). Defaults to ``"kraken"`` for backward
+                     compatibility.
     """
 
     influx_config = {
-        "bucket": bucket or os.getenv("INFLUXDB_INIT_BUCKET"),
-        "org":    org    or os.getenv("INFLUXDB_INIT_ORG"),
-        "url":    url    or os.getenv("INFLUX_URL"),
-        "token":  token  or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN"),
+        "bucket":      bucket      or os.getenv("INFLUXDB_INIT_BUCKET"),
+        "org":         org         or os.getenv("INFLUXDB_INIT_ORG"),
+        "url":         url         or os.getenv("INFLUX_URL"),
+        "token":       token       or os.getenv("INFLUXDB_INIT_ADMIN_TOKEN"),
+        "measurement": measurement or "kraken",
     }
 
     missing = [k for k, v in influx_config.items() if not v]
@@ -77,7 +84,7 @@ def _query_with_retry(ticker: str, days_into_past: int, influx_config: dict):
     query = f'''
         from(bucket: "{influx_config['bucket']}")
         |> range(start: -{days_into_past}d)
-        |> filter(fn: (r) => r["_measurement"] == "kraken")
+        |> filter(fn: (r) => r["_measurement"] == "{influx_config['measurement']}")
         |> filter(fn: (r) => r["_field"] == "price")
         |> filter(fn: (r) => r["ticker_entry"] == "{ticker}")
     '''
