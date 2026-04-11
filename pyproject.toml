@@ -24,6 +24,7 @@ dependencies = [
     "pyyaml==6.0.2",
     "pyarrow==19.0.1",
     "websocket-client==1.8.0",
+    "python-binance>=1.0",
 ]
 
 [project.optional-dependencies]
