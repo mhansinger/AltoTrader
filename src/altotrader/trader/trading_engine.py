@@ -221,6 +221,12 @@ class TradingEngine(threading.Thread):
                 order_id=result.order_id,
             )
             self.position_mgr.open(position)
+            self.logger.info(
+                f"BUY  | price={result.price:,.4f} | "
+                f"amount={result.base_amount:.6f} {self.config.base_currency} | "
+                f"invested={result.quote_amount:,.2f} {self.config.quote_currency} | "
+                f"fee={result.fee:,.4f}"
+            )
         except Exception as exc:
             self.logger.error(f"BUY order failed for {self.config.pair}: {exc}")
 
@@ -243,14 +249,26 @@ class TradingEngine(threading.Thread):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _fetch_prices(self) -> Optional[dict]:
-        """Fetch latest prices from the ticker. Returns None on failure."""
+        """Fetch latest prices from the ticker. Returns None on failure.
+
+        Normalises Kraken's list-valued fields (e.g. ``c = [price, vol, ...]``)
+        to plain floats so downstream code can treat every exchange uniformly.
+        """
         try:
             market_query = self.ticker.get_market_query()
             prices = market_query.get(self.config.pair)
             if not prices:
                 self.logger.warning(f"No price data for {self.config.pair}")
                 return None
-            return prices
+
+            def _first(v):
+                return float(v[0]) if isinstance(v, list) else float(v)
+
+            return {
+                "c": _first(prices["c"]),
+                "a": _first(prices["a"]),
+                "b": _first(prices["b"]),
+            }
         except Exception as exc:
             self.logger.warning(f"Price fetch failed: {exc}")
             return None
