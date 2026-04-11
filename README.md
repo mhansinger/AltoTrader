@@ -249,15 +249,35 @@ Exchange API ──→ Ticker ──→ SignalGenerator (SMA crossover)
 
 ## Backtesting
 
-### Quick start
+The backtest engine simulates a strategy on historical 1-minute price data with
+realistic fees and slippage.  It supports four strategies that can be switched
+at the command line or in Python.
+
+### Available strategies
+
+| Key | Name | Entry condition | Exit condition |
+|---|---|---|---|
+| `sma` | SMA Crossover *(original)* | Short SMA crosses above long SMA | Short SMA crosses below long SMA |
+| `ema` | **Option A – Improved EMA** | Short EMA crosses above long EMA + volume ok + 4h trend up | ATR trailing stop **or** death cross |
+| `momentum` | **Option B – Momentum** | N-period return > threshold | Return falls below exit threshold **or** ATR stop |
+| `bollinger_rsi` | **Option C – Bollinger + RSI** | Price < lower Bollinger Band **and** RSI < oversold level | Price reverts to middle band **or** RSI overbought |
+
+> **Why multiple strategies?**
+> SMA crossover is simple but reacts slowly and produces many false signals in
+> sideways markets.  The three new strategies address different market regimes:
+> *Option A* improves trend-following, *Option B* captures multi-hour momentum,
+> *Option C* exploits mean-reversion dips inside a broader uptrend.
+
+---
+
+### Quick start – Python API
 
 ```python
-from altotrader.backtest.dataloader     import DataLoader
-from altotrader.backtest.backtest_engine import BacktestEngine
+from altotrader.backtest import BacktestEngine, DataLoader, get_strategy
 
 loader_config = {
     "export_path": "Examples/ticker_export",
-    "latest_days": 20,
+    "latest_days": 30,
     "logs_dir":    "logs",
 }
 backtest_config = {
@@ -269,36 +289,187 @@ backtest_config = {
     "trading_currency": "BTC",
 }
 
-loader   = DataLoader(loader_config)
-backtest = BacktestEngine(loader, backtest_config)
-metrics  = backtest.run(window_short=50, window_long=200)
+loader  = DataLoader(loader_config)
+engine  = BacktestEngine(loader, backtest_config)
+
+# ── Option A: Improved EMA crossover ─────────────────────────────────────────
+metrics = engine.run_strategy(
+    get_strategy("ema"),
+    ema_short=50,          # short EMA window in minutes
+    ema_long=200,          # long  EMA window in minutes
+    atr_multiplier=2.0,    # trailing stop = peak - 2 × ATR
+    trend_filter=True,     # only buy when price > 4h 200-EMA
+)
+
+# ── Option B: Momentum ────────────────────────────────────────────────────────
+metrics = engine.run_strategy(
+    get_strategy("momentum"),
+    lookback_period=240,   # measure return over last 4 h
+    entry_threshold=0.02,  # enter if 4h return > 2 %
+    exit_threshold=-0.005, # exit  if 4h return < -0.5 %
+    atr_multiplier=2.5,
+)
+
+# ── Option C: Bollinger Bands + RSI ──────────────────────────────────────────
+metrics = engine.run_strategy(
+    get_strategy("bollinger_rsi"),
+    bb_period=120,         # 2-hour Bollinger Bands
+    bb_std=2.0,            # band width in standard deviations
+    rsi_period=60,         # 1-hour RSI
+    rsi_oversold=35,       # buy when RSI drops below 35
+    rsi_overbought=65,     # sell when RSI rises above 65
+    trend_filter=True,     # only buy above 4h 200-EMA
+)
+
+# ── Original SMA crossover (unchanged) ───────────────────────────────────────
+metrics = engine.run(window_short=50, window_long=200)
+
 print(metrics)
+engine.plot_results()
 ```
 
-### Key metrics returned
+---
+
+### Grid search – find the best parameters
+
+Each strategy exposes different tunable parameters.  Use `run_strategy_grid_search`
+to sweep all combinations and rank them by Sharpe ratio (or any other metric).
+
+```python
+# Option A – EMA
+results = engine.run_strategy_grid_search(
+    get_strategy("ema"),
+    param_grid={
+        "ema_short":      [30, 50, 100],
+        "ema_long":       [200, 500, 1000],
+        "atr_multiplier": [1.5, 2.0, 2.5],
+        "trend_filter":   [True],
+    },
+)
+
+# Option B – Momentum
+results = engine.run_strategy_grid_search(
+    get_strategy("momentum"),
+    param_grid={
+        "lookback_period": [120, 240, 480],
+        "entry_threshold": [0.01, 0.02, 0.03],
+        "atr_multiplier":  [2.0, 2.5],
+    },
+)
+
+# Option C – Bollinger + RSI
+results = engine.run_strategy_grid_search(
+    get_strategy("bollinger_rsi"),
+    param_grid={
+        "bb_period":    [60, 120, 240],
+        "rsi_period":   [30, 60],
+        "rsi_oversold": [30, 35, 40],
+    },
+)
+
+print(results.head())          # sorted by sharpe_ratio by default
+engine.plot_results()          # plot the best run
+```
+
+---
+
+### Command-line interface
+
+The `Examples/run_backtest.py` script exports data from InfluxDB, runs the full
+grid search, and saves results to CSV + JSON.  Switch strategies with `--strategy`.
+
+```bash
+# Option A – EMA crossover
+python Examples/run_backtest.py \
+    --strategy ema \
+    --pairs BTC-EUR \
+    --ema-short 50,100,200 \
+    --ema-long 200,500,1000 \
+    --atr-multiplier 1.5,2.0,2.5
+
+# Option B – Momentum
+python Examples/run_backtest.py \
+    --strategy momentum \
+    --pairs BTC-EUR \
+    --lookback-period 120,240,480 \
+    --entry-threshold 0.01,0.02,0.03
+
+# Option C – Bollinger Bands + RSI
+python Examples/run_backtest.py \
+    --strategy bollinger_rsi \
+    --pairs BTC-EUR \
+    --bb-period 60,120,240 \
+    --rsi-period 30,60 \
+    --rsi-oversold 30,35
+
+# Original SMA (backward compatible)
+python Examples/run_backtest.py \
+    --strategy sma \
+    --pairs BTC-EUR \
+    --short-windows 10,20,50,100 \
+    --long-windows 100,200,300,500
+
+# Disable the 4h trend filter (Options A and C)
+python Examples/run_backtest.py --strategy ema --no-trend-filter ...
+
+# Sort results by return instead of Sharpe
+python Examples/run_backtest.py --strategy ema --sort-by total_return_pct ...
+```
+
+Output files (in `results/` by default):
+
+- `results_{PAIR}_{STRATEGY}.csv` – full grid search table, one row per parameter combination
+- `best_params.json` – best parameters per pair, ready to feed into the trading bot
+
+---
+
+### Strategy parameters reference
+
+**Option A – `ema`**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `ema_short` | 50 | Short EMA span (minutes) |
+| `ema_long` | 200 | Long EMA span (minutes) |
+| `atr_period` | 60 | ATR estimation window (minutes) |
+| `atr_multiplier` | 2.0 | Trailing stop distance in ATR multiples |
+| `volume_filter_window` | 60 | Volume MA window; set 0 to disable |
+| `trend_filter` | True | Require price > 4h 200-EMA before entry |
+
+**Option B – `momentum`**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `lookback_period` | 240 | Return measurement window (minutes) |
+| `entry_threshold` | 0.02 | Minimum return to trigger entry (e.g. 0.02 = 2 %) |
+| `exit_threshold` | -0.005 | Return level that triggers exit |
+| `atr_multiplier` | 2.5 | Trailing stop distance in ATR multiples |
+| `min_holding_bars` | 60 | Minimum hold time after a trade (minutes) |
+
+**Option C – `bollinger_rsi`**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `bb_period` | 120 | Bollinger Band rolling window (minutes) |
+| `bb_std` | 2.0 | Band width in standard deviations |
+| `rsi_period` | 60 | RSI look-back window (minutes) |
+| `rsi_oversold` | 35 | RSI buy threshold (enter below) |
+| `rsi_overbought` | 65 | RSI sell threshold (exit above) |
+| `trend_filter` | True | Require price > 4h 200-EMA before entry |
+
+---
+
+### Key metrics returned by every strategy
 
 | Key | Description |
 |---|---|
-| `total_return_pct` | Strategy return vs initial invest |
-| `buy_and_hold_return_pct` | Passive benchmark |
-| `n_trades` | Number of completed round-trips |
-| `win_rate` | % of profitable trades |
-| `max_drawdown_pct` | Maximum peak-to-trough loss |
-| `sharpe_ratio` | Annualised Sharpe (daily returns × √365) |
-| `total_fees` / `taker_fees` / `maker_fees` | Fee breakdown |
-
-### Grid search
-
-```python
-from altotrader.backtest.backtest_engine import run_grid_search
-
-results = run_grid_search(
-    backtest,
-    short_windows=[20, 50, 100],
-    long_windows=[100, 200, 500],
-)
-print(results[["window_short", "window_long", "total_return_pct", "sharpe_ratio"]].head())
-```
+| `total_return_pct` | Strategy return vs initial investment |
+| `buy_and_hold_return_pct` | Passive benchmark (buy at start, sell at end) |
+| `n_trades` | Number of completed round-trips (buy + sell) |
+| `win_rate` | Percentage of profitable trades |
+| `max_drawdown_pct` | Largest peak-to-trough loss during the period |
+| `sharpe_ratio` | Annualised Sharpe ratio (daily returns × √365) |
+| `total_fees` / `taker_fees` / `maker_fees` | Fee breakdown in base currency |
 
 ---
 
@@ -322,10 +493,10 @@ python Examples/fetch_from_remote.py \
 python -m pytest
 ```
 
-183 tests, 0 failures.
-
 ---
 
 ## Disclaimer
 
-This software is for educational purposes only. Automated trading carries significant financial risk. Past backtesting performance does not guarantee future results. Use at your own risk.
+This software is for educational purposes only. Automated trading carries
+significant financial risk. Past backtesting performance does not guarantee
+future results. Use at your own risk.

@@ -7,6 +7,9 @@ from typing import List, Optional
 from altotrader.backtest.dataloader import DataLoader
 from altotrader.logging_config import setup_logging
 
+# Imported lazily inside methods to avoid circular imports at module load time.
+# Use: from altotrader.backtest.strategies import BaseStrategy
+
 
 class BacktestEngine:
     def __init__(self, dataloader: DataLoader, backtest_config: dict, log_dir: str = 'logs'):
@@ -347,6 +350,194 @@ class BacktestEngine:
             'maker_fees':                 round(maker_fees, 4),
             'final_portfolio_value':      round(final, 4),
         }
+
+    # ── Pluggable strategy runner ─────────────────────────────────────────────
+
+    def run_strategy(self, strategy, **strategy_params) -> dict:
+        """Run a backtest with any strategy that implements BaseStrategy.
+
+        This is the main entry point for the three new strategies (Options A–C).
+        The original ``run(window_short, window_long)`` method is kept unchanged
+        for the classic SMA crossover.
+
+        How it works
+        ------------
+        1. Reset portfolio state.
+        2. Call ``strategy.setup(pair, **strategy_params)`` – stores pair name
+           and any static config the strategy needs inside the strategy object.
+        3. Call ``strategy.add_indicators(portfolio_view, dataloader, ...)`` –
+           the strategy attaches all indicator columns it needs (EMAs, ATR,
+           Bollinger Bands, RSI, …).
+        4. Drop warm-up rows where required indicators are still NaN.
+        5. Iterate bar-by-bar: execute any pending order from the previous bar,
+           then ask the strategy for a signal on the current bar.
+        6. Force-close any open position at the last bar.
+        7. Compute and return performance metrics.
+
+        The ``state`` dict is passed to the strategy on every bar so it can
+        carry cross-bar memory (trailing stop levels, peak prices, cooldown
+        counters, …) without needing instance variables.
+
+        Args:
+            strategy:         An instance of a BaseStrategy subclass.
+            **strategy_params: Forwarded to both ``setup`` and
+                               ``add_indicators``.  These are the tunable
+                               parameters (e.g. ``ema_short=50``).
+
+        Returns:
+            dict of performance metrics (same keys as ``compute_metrics()``).
+
+        Example::
+
+            from altotrader.backtest.strategies import get_strategy
+
+            strategy = get_strategy("ema")
+            metrics  = engine.run_strategy(strategy, ema_short=50, ema_long=200,
+                                           atr_multiplier=2.0)
+        """
+        from altotrader.backtest.strategies.base import BaseStrategy as _BaseStrategy  # noqa
+
+        self._set_portfolio_view_df()
+        strategy.setup(self.pair, **strategy_params)
+        strategy.add_indicators(self.portfolio_view, self.dataloader, **strategy_params)
+
+        dropna_cols = [
+            c for c in strategy.required_dropna_cols
+            if c in self.portfolio_view.columns
+        ]
+        valid = (
+            self.portfolio_view.dropna(subset=dropna_cols)
+            if dropna_cols
+            else self.portfolio_view.copy()
+        )
+
+        self.logger.info(
+            f"run_strategy | strategy={strategy.name} | "
+            f"params={strategy_params} | bars={len(valid)}"
+        )
+
+        pending_action: Optional[str] = None
+        state: dict = {**strategy_params}  # seed state with all params
+
+        for idx, (timestamp, row) in enumerate(valid.iterrows()):
+            int_idx = self.portfolio_view.index.get_loc(timestamp)
+
+            # ── STEP 1: Execute pending order from previous bar ───────────────
+            if pending_action == "buy":
+                self.enter_market(int_idx, row)
+            elif pending_action == "sell":
+                self.exit_market(int_idx, row)
+            else:
+                self.update_portfolio(int_idx, row)
+            pending_action = None
+
+            # ── STEP 2: Read current position after execution ────────────────
+            current_position = self.portfolio_view.iloc[int_idx]["market_position"]
+
+            # ── STEP 3: Ask strategy for a signal on this bar ────────────────
+            signal, state = strategy.on_bar(idx, row, valid, current_position, state)
+            if signal in ("buy", "sell"):
+                pending_action = signal
+
+        # Force-close any open position at end of data
+        last_idx = len(self.portfolio_view) - 1
+        last_row = self.portfolio_view.iloc[last_idx]
+        if last_row["market_position"] == "in":
+            self.exit_market(last_idx, last_row)
+            self.portfolio_view.at[last_row.name, "action"] = "sell (end)"
+
+        metrics = self.compute_metrics()
+        self.logger.info(
+            f"run_strategy done | return={metrics['total_return_pct']:+.2f}% | "
+            f"sharpe={metrics['sharpe_ratio']:.2f} | trades={metrics['n_trades']}"
+        )
+        return metrics
+
+    def run_strategy_grid_search(
+        self,
+        strategy,
+        param_grid: dict,
+        sort_by: str = "sharpe_ratio",
+    ) -> "pd.DataFrame":
+        """Parameter sweep for any pluggable strategy.
+
+        Works exactly like ``run_grid_search()`` for the SMA crossover but
+        accepts an arbitrary ``param_grid`` dict so you can tune any set of
+        parameters for any strategy.
+
+        Args:
+            strategy:   A BaseStrategy instance (will be reused across runs –
+                        state is reset by ``run_strategy`` on every call).
+            param_grid: Dict mapping parameter names to lists of values.
+                        All combinations are tested.  Example::
+
+                            {
+                                "ema_short":      [30, 50, 100],
+                                "ema_long":       [200, 500, 1000],
+                                "atr_multiplier": [1.5, 2.0, 2.5],
+                            }
+
+            sort_by:    Metric column to sort results by (descending).
+                        Default ``'sharpe_ratio'``.
+
+        Returns:
+            DataFrame sorted by *sort_by* (descending) with one row per
+            parameter combination.
+
+        Example::
+
+            from altotrader.backtest.strategies import get_strategy
+            from altotrader.backtest.backtest_engine import BacktestEngine
+
+            strategy = get_strategy("ema")
+            results  = engine.run_strategy_grid_search(
+                strategy,
+                param_grid={
+                    "ema_short":      [50, 100],
+                    "ema_long":       [200, 500],
+                    "atr_multiplier": [1.5, 2.0],
+                },
+            )
+            print(results.head())
+        """
+        keys   = list(param_grid.keys())
+        combos = list(product(*[param_grid[k] for k in keys]))
+        self.logger.info(
+            f"Strategy grid search: strategy={strategy.name} | "
+            f"{len(combos)} combinations"
+        )
+
+        rows = []
+        for combo in combos:
+            params = dict(zip(keys, combo))
+            try:
+                metrics = self.run_strategy(strategy, **params)
+                metrics.update(params)
+                rows.append(metrics)
+                self.logger.debug(
+                    f"  {params}  →  "
+                    f"return={metrics['total_return_pct']:+.2f}%  "
+                    f"sharpe={metrics['sharpe_ratio']:.3f}  "
+                    f"trades={metrics['n_trades']}"
+                )
+            except Exception as exc:
+                self.logger.warning(f"  {params} failed: {exc}")
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = (
+            pd.DataFrame(rows)
+            .sort_values(sort_by, ascending=False)
+            .reset_index(drop=True)
+        )
+        best = df.iloc[0]
+        self.logger.info(
+            f"Best: {dict(best[keys].items())}  "
+            f"→  {sort_by}={best[sort_by]:.3f}  "
+            f"return={best['total_return_pct']:+.2f}%"
+        )
+        return df
 
     # ── Visualisation ─────────────────────────────────────────────────────────
 

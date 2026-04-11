@@ -53,7 +53,8 @@ class TestRunBacktestForPair:
         with patch("Examples.run_backtest.export_prices", return_value=False):
             result = run_backtest_for_pair(
                 pair="BTC-EUR", exchange="kraken", days=7,
-                short_windows=[10, 20], long_windows=[50, 100],
+                strategy_name="sma",
+                param_grid={"window_short": [10, 20], "window_long": [50, 100]},
                 export_dir=str(tmp_path), backtest_config={}, logger=logger,
             )
         assert result is None
@@ -68,7 +69,8 @@ class TestRunBacktestForPair:
              patch("Examples.run_backtest.DataLoader", return_value=mock_loader):
             result = run_backtest_for_pair(
                 pair="BTC-EUR", exchange="kraken", days=7,
-                short_windows=[10], long_windows=[50],
+                strategy_name="sma",
+                param_grid={"window_short": [10], "window_long": [50]},
                 export_dir=str(tmp_path), backtest_config={}, logger=logger,
             )
         assert result is None
@@ -84,7 +86,8 @@ class TestRunBacktestForPair:
              patch("Examples.run_backtest.run_grid_search", return_value=mock_results_df):
             result = run_backtest_for_pair(
                 pair="BTC-EUR", exchange="kraken", days=7,
-                short_windows=[10, 20], long_windows=[50, 100],
+                strategy_name="sma",
+                param_grid={"window_short": [10, 20], "window_long": [50, 100]},
                 export_dir=str(tmp_path), backtest_config={}, logger=logger,
             )
 
@@ -106,7 +109,8 @@ class TestRunBacktestForPair:
              patch("Examples.run_backtest.run_grid_search", return_value=pd.DataFrame()):
             result = run_backtest_for_pair(
                 pair="BTC-EUR", exchange="kraken", days=7,
-                short_windows=[10], long_windows=[50],
+                strategy_name="sma",
+                param_grid={"window_short": [10], "window_long": [50]},
                 export_dir=str(tmp_path), backtest_config={}, logger=logger,
             )
         assert result is None
@@ -121,7 +125,8 @@ class TestRunBacktestForPair:
              patch("Examples.run_backtest.run_grid_search", return_value=mock_results_df):
             result = run_backtest_for_pair(
                 pair="BTC-EUR", exchange="kraken", days=7,
-                short_windows=[10, 20], long_windows=[50, 100],
+                strategy_name="sma",
+                param_grid={"window_short": [10, 20], "window_long": [50, 100]},
                 export_dir=str(tmp_path), backtest_config={}, logger=logger,
             )
 
